@@ -3,6 +3,7 @@
 ## 설치
 
 [여기](https://code.visualstudio.com/)를 클릭하여 VScode 설치 파일을 다운로드한 후 default 설정으로 설치를 완료합니다.
+
 ![alt text](asset/docs/images/image-3.png)
 
 <!-- ## Windows 기준 초기 설정
@@ -26,6 +27,7 @@ Windows 설치 파일을 실행할 때 아래 항목을 선택합니다.
 ### 필수 확장 프로그램
 
 좌측 상단 확장 프로그램 아이콘을 클릭합니다
+
 ![alt text](asset/docs/images/image-5.png)
 
 검색창에 확장 프로그램명 또는 Extension ID를 넣어서 찾은 후 확장 프로그램을 설치합니다.
@@ -106,27 +108,28 @@ x64
 OpenSSH_for_Windows_9.5p1, LibreSSL 3.8.2
 ```
 
-
-
-```powershell
+<!-- ```powershell
 code --version
 git --version
 docker --version
 docker compose version
 ssh -V
-```
+``` -->
 
 ### SSH 원격 접속 방법
 
 SSH Remote 익스텐션을 설치하면 자동으로 우측 상단 툴바에 아이콘이 생성됩니다. 빨간 동그라미친 SSH Remote 아이콘을 클릭하세요.
+
 ![ssh sidebar icon](<asset/docs/images/ssh sidebar icon.png>)
 
 
 SSH 항목 오른쪽에 있는 `+`를 클릭합니다.
+
 ![new remote](<asset/docs/images/new remote.png>)
 
 
 그럼 상단 중앙에 아래와 같은 입력창이 뜹니다. 입력창에 원격 접속하고자 하는 VM의 user id 와 ip 주소를 입력 합니다.
+
 ![alt text](asset/docs/images/image.png)
 
 ```bash
@@ -136,10 +139,12 @@ guru@192.168.111.100
 
 이후에 ssh 접속 설정을 어디에 저장할건지 묻습니다.
 여기서는 `C:\Users\[내계정명]\.ssh\config` 경로에 저장하도록  클릭해 선택합니다.
+
 ![alt text](asset/docs/images/image-1.png)
 
 
 설정 등록에 성공했다면 우측 하단에 아래와 같은 알림이 뜹니다.
+
 ![alt text](asset/docs/images/image-2.png)
 
 알림의 Open Config 버튼을 클릭하거나 우측상단 SSH Remote 아이콘을 클릭하고 `SSH` 항목을 클릭하면 새로운 원격 설정이 등록된것을 확인 할 수 있습니다.
