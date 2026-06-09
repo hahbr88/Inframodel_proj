@@ -39,6 +39,7 @@ services:
     # 수동으로 중지하기 전까지 예기치 못한 에러 시 자동 재시작
 
     restart: unless-stopped
+
     # 컨테이너 간 구동 순서 의존성 정의
     depends_on:
       # db 서비스가 먼저 생성 및 실행된 후 워드프레스 웹 서버 시작
