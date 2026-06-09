@@ -9,6 +9,7 @@ services:
   db:
     # 맥(ARM) 및 인텔 환경 모두 호환되는 최신 MariaDB 이미지 사용
     image: mariadb:latest
+    
     # 컨테이너 고유 이름을 'wp-db'로 고정
     container_name: wp-db
     # 수동으로 끄기 전까지 컨테이너 다운 시 자동 재시작
