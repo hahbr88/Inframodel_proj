@@ -134,7 +134,7 @@ fix/readme-typo
 
 ---
 
-## GitHub 권장 설정
+<!-- ## GitHub 권장 설정
 
 GitHub 저장소 설정은 아래 기준으로 맞추는 것을 권장합니다.
 
@@ -146,13 +146,11 @@ Require conversation resolution before merging: 체크
 Block force pushes: 체크
 Require status checks to pass: 일단 해제
 Allowed merge methods: Squash만 허용
-```
+``` -->
 
-핵심은 아래 흐름을 지키는 것입니다.
+**핵심은 아래 흐름을 지키는 것입니다.**
 
-```text
-브랜치 생성 -> 작업 -> PR 생성 -> 승인 1개 -> Squash merge
-```
+> 브랜치 생성 -> 작업 -> PR 생성 -> 승인 1개 -> Squash merge
 
 ---
 
@@ -222,3 +220,12 @@ Squash and merge
 
 - 팀원: 브랜치 생성, 작업, 커밋, `push`, PR 생성
 - 팀장: PR 확인, 충돌 확인, 승인 확인, `Squash merge`
+
+---
+
+### 문서 버젼 관리
+
+|작성일|작성자|버젼|
+|---|--|-|
+|20260608|하병노|1.0|
+|20260609|하병노|1.01|
