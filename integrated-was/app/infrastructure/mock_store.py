@@ -61,17 +61,13 @@ class MockStore:
             item["id"]: MockReservation(
                 id=item["id"],
                 course_id=item["course_id"],
-                reservation_date=datetime.fromisoformat(
-                    item["reservation_date"]
-                ),
+                reservation_date=datetime.fromisoformat(item["reservation_date"]),
                 status=item["status"],
                 course=self.courses[item["course_id"]],
             )
             for item in payload["reservations"]
         }
-        self.village_forecasts: dict[str, Any] = payload[
-            "village_forecasts"
-        ]
+        self.village_forecasts: dict[str, Any] = payload["village_forecasts"]
         self.climate_indices: dict[str, Any] = payload["climate_indices"]
         self.pending_snapshot: dict[int, tuple[str, datetime]] | None = None
         self.refresh_course_metadata()

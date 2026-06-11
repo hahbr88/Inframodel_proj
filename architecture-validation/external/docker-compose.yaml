@@ -1,0 +1,63 @@
+services:
+  app-a1:
+    image: nginx:1.26-alpine
+    container_name: app-a1
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - TZ=Asia/Seoul
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    networks:
+      - ext-net
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  proxy-a1:
+    image: nginx:1.26-alpine
+    container_name: proxy-a1
+    ports:
+      - "8080:80"
+    environment:
+      - TZ=Asia/Seoul
+    networks:
+      - ext-net
+      - int-net  
+    restart: always
+
+  app-b1:
+    image: nginx:1.26-alpine
+    container_name: app-b1
+    environment:
+      - TZ=Asia/Seoul
+    networks:
+      - int-net
+    restart: always
+
+  redis1:
+    image: redis:latest
+    container_name: redis1
+    environment:
+      - TZ=Asia/Seoul
+    networks:
+      - ext-net
+      - int-net
+    restart: always
+
+networks:
+  ext-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.70.1.0/24  # /16에서 /24로 수정
+  int-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.70.2.0/24  # /16에서 /24로 수정

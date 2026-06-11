@@ -42,22 +42,12 @@ def test_duplicate_weather_rows_merge_themes() -> None:
 
 
 def test_kma_result_code_mapping() -> None:
+    assert KmaClient._map_result_code_to_status("03") == status.HTTP_404_NOT_FOUND
     assert (
-        KmaClient._map_result_code_to_status("03")
-        == status.HTTP_404_NOT_FOUND
+        KmaClient._map_result_code_to_status("21") == status.HTTP_429_TOO_MANY_REQUESTS
     )
-    assert (
-        KmaClient._map_result_code_to_status("21")
-        == status.HTTP_429_TOO_MANY_REQUESTS
-    )
-    assert (
-        KmaClient._map_result_code_to_status("30")
-        == status.HTTP_400_BAD_REQUEST
-    )
-    assert (
-        KmaClient._map_result_code_to_status("01")
-        == status.HTTP_502_BAD_GATEWAY
-    )
+    assert KmaClient._map_result_code_to_status("30") == status.HTTP_400_BAD_REQUEST
+    assert KmaClient._map_result_code_to_status("01") == status.HTTP_502_BAD_GATEWAY
 
 
 @pytest.mark.asyncio
@@ -75,9 +65,7 @@ async def test_kma_request_collects_all_pages(monkeypatch) -> None:
                 "header": {"resultCode": "00", "resultMsg": "NORMAL"},
                 "body": {
                     "totalCount": 720,
-                    "items": {
-                        "item": [{"row": index} for index in range(start, end)]
-                    },
+                    "items": {"item": [{"row": index} for index in range(start, end)]},
                 },
             }
         }

@@ -49,10 +49,7 @@ class SnapshotWeatherClient:
     def _load(self) -> dict[str, Any]:
         try:
             modified_at_ns = self.snapshot_path.stat().st_mtime_ns
-            if (
-                self._snapshot is None
-                or self._modified_at_ns != modified_at_ns
-            ):
+            if self._snapshot is None or self._modified_at_ns != modified_at_ns:
                 self._snapshot = json.loads(
                     self.snapshot_path.read_text(encoding="utf-8")
                 )

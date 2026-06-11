@@ -59,9 +59,7 @@ async def initialize_database() -> None:
 
         existing_courses = {
             course.id: course
-            for course in (
-                await session.scalars(select(Course))
-            ).all()
+            for course in (await session.scalars(select(Course))).all()
         }
         catalog = load_course_catalog()
         known_overrides = {

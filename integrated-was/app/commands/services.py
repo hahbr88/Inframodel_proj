@@ -78,9 +78,7 @@ class ReservationCommandService:
 
     async def cancel(self, reservation_id: int) -> None:
         try:
-            reservation = await self.repository.cancel_reservation(
-                reservation_id
-            )
+            reservation = await self.repository.cancel_reservation(reservation_id)
             if reservation is None:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,

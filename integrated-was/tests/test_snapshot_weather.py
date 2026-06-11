@@ -31,9 +31,7 @@ async def test_snapshot_client_reads_collected_data(tmp_path) -> None:
                         }
                     ]
                 },
-                "climate_indices": {
-                    "35": {"score": 80.0, "grade": "좋음"}
-                },
+                "climate_indices": {"35": {"score": 80.0, "grade": "좋음"}},
             }
         ),
         encoding="utf-8",

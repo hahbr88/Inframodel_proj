@@ -43,9 +43,7 @@ class Settings(BaseSettings):
         r"):5173$"
     )
     kma_service_key: str = ""
-    kma_base_url: str = (
-        "https://apis.data.go.kr/1360000/TourStnInfoService1"
-    )
+    kma_base_url: str = "https://apis.data.go.kr/1360000/TourStnInfoService1"
     kma_timeout_seconds: float = 5.0
     kma_snapshot_path: str = "./data/kma_snapshot.json"
     kma_collection_retries: int = 3

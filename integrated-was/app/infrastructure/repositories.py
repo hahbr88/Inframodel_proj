@@ -68,10 +68,7 @@ class QueryRepository:
 
     async def list_courses(self) -> list[Course]:
         result = await self.session.execute(select(Course).order_by(Course.id))
-        return [
-            self._enrich_course(course)
-            for course in result.scalars().all()
-        ]
+        return [self._enrich_course(course) for course in result.scalars().all()]
 
     async def get_course(self, course_id: int) -> Course | None:
         course = await self.session.get(Course, course_id)
@@ -89,9 +86,5 @@ class QueryRepository:
         metadata = self.course_catalog.get(course.kma_course_id)
         course.spots = [] if metadata is None else metadata.spots
         course.spot_count = len(course.spots)
-        course.themes = (
-            []
-            if metadata is None
-            else metadata.themes
-        )
+        course.themes = [] if metadata is None else metadata.themes
         return course

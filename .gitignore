@@ -31,10 +31,13 @@ pnpm-debug.log*
 # Dependencies / build output
 node_modules/
 .pnpm-store/
+.vite/
 dist/
 build/
 coverage/
 .cache/
+.eslintcache
+*.tsbuildinfo
 tmp/
 temp/
 

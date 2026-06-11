@@ -58,7 +58,7 @@ class CourseQueryService:
         for reservation in reservations:
             if reservation.status != "CANCELLED":
                 active_counts[reservation.course_id] = (
-                active_counts.get(reservation.course_id, 0) + 1
+                    active_counts.get(reservation.course_id, 0) + 1
                 )
 
         filtered_courses = [
@@ -121,14 +121,10 @@ class CourseQueryService:
             course.name,
             course.location,
             *getattr(course, "themes", []),
-            *[
-                spot.name
-                for spot in getattr(course, "spots", [])
-            ],
+            *[spot.name for spot in getattr(course, "spots", [])],
         ]
         return any(
-            normalized_keyword in str(value).casefold()
-            for value in searchable_values
+            normalized_keyword in str(value).casefold() for value in searchable_values
         )
 
     async def get_detail(self, course_id: int) -> CourseDetailResponse:
@@ -148,8 +144,7 @@ class CourseQueryService:
         active_reservation_count = sum(
             1
             for reservation in reservations
-            if reservation.course_id == course_id
-            and reservation.status != "CANCELLED"
+            if reservation.course_id == course_id and reservation.status != "CANCELLED"
         )
         base_time = await self.weather_client.resolve_base_time(
             get_closest_kma_base_time()
@@ -206,8 +201,7 @@ class CourseQueryService:
             weather=weather,
             forecasts=(
                 [WeatherDetail(**item) for item in forecast_result]
-                if include_forecasts
-                and not isinstance(forecast_result, Exception)
+                if include_forecasts and not isinstance(forecast_result, Exception)
                 else []
             ),
             weather_available=weather is not None,
@@ -223,23 +217,13 @@ class CourseQueryService:
         if not forecasts:
             return None
         forecast_at = min(item["forecast_at"] for item in forecasts)
-        nearest = [
-            item for item in forecasts if item["forecast_at"] == forecast_at
-        ]
-        themes = sorted(
-            {
-                theme
-                for item in nearest
-                for theme in item.get("themes", [])
-            }
-        )
+        nearest = [item for item in forecasts if item["forecast_at"] == forecast_at]
+        themes = sorted({theme for item in nearest for theme in item.get("themes", [])})
         return CourseWeatherSummary(
             forecast_at=forecast_at,
             min_temperature=min(item["temperature"] for item in nearest),
             max_temperature=max(item["temperature"] for item in nearest),
-            max_rain_probability=max(
-                item["rain_probability"] for item in nearest
-            ),
+            max_rain_probability=max(item["rain_probability"] for item in nearest),
             average_humidity=round(
                 sum(item["humidity"] for item in nearest) / len(nearest)
             ),
@@ -286,9 +270,7 @@ class WeatherQueryService:
         if course is None:
             self._raise_course_not_found()
 
-        base_time = await self.client.resolve_base_time(
-            get_closest_kma_base_time()
-        )
+        base_time = await self.client.resolve_base_time(get_closest_kma_base_time())
         forecast_data = await self.client.get_village_forecast(
             course.kma_course_id,
             base_time,
@@ -310,9 +292,7 @@ class WeatherQueryService:
         if course is None:
             self._raise_course_not_found()
 
-        base_time = await self.client.resolve_base_time(
-            get_closest_kma_base_time()
-        )
+        base_time = await self.client.resolve_base_time(get_closest_kma_base_time())
         climate_data = await self.client.get_climate_index(
             course.city_area_id,
             base_time,
@@ -329,9 +309,7 @@ class WeatherQueryService:
         if course is None:
             self._raise_course_not_found()
 
-        base_time = await self.client.resolve_base_time(
-            get_closest_kma_base_time()
-        )
+        base_time = await self.client.resolve_base_time(get_closest_kma_base_time())
         forecast_data, climate_data = await asyncio.gather(
             self.client.get_village_forecast(course.kma_course_id, base_time),
             self.client.get_climate_index(course.city_area_id, base_time),

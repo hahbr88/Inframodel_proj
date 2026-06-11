@@ -1,0 +1,14 @@
+{
+  "name": "internal-was-test",
+  "version": "1.0.0",
+  "description": "Internal Network WAS Test Application",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "mysql2": "^3.9.7",
+    "redis": "^4.6.13"
+  }
+}

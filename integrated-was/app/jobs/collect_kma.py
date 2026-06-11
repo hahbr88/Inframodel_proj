@@ -52,8 +52,7 @@ def _is_retryable(exc: Exception) -> bool:
 
 def _is_no_data(exc: Exception) -> bool:
     return (
-        isinstance(exc, HTTPException)
-        and exc.status_code == status.HTTP_404_NOT_FOUND
+        isinstance(exc, HTTPException) and exc.status_code == status.HTTP_404_NOT_FOUND
     )
 
 
@@ -90,9 +89,7 @@ async def _with_retry(operation_name: str, operation):
                 raise
             if attempt >= settings.kma_collection_retries:
                 break
-            retry_delay = settings.kma_collection_retry_seconds * (
-                2 ** (attempt - 1)
-            )
+            retry_delay = settings.kma_collection_retry_seconds * (2 ** (attempt - 1))
             _log(
                 f"재시도 대기: {operation_name} "
                 f"({attempt}/{settings.kma_collection_retries}, "
@@ -112,9 +109,7 @@ async def collect_snapshot() -> str:
         raise RuntimeError("KMA_SERVICE_KEY is not configured")
 
     started_at = time.monotonic()
-    base_time = get_closest_kma_base_time(
-        publication_delay_minutes=10
-    )
+    base_time = get_closest_kma_base_time(publication_delay_minutes=10)
     snapshot_path = Path(settings.kma_snapshot_path)
     if settings.weather_storage == "database":
         await initialize_database()
@@ -196,8 +191,7 @@ async def collect_snapshot() -> str:
     for course, result in zip(courses, forecast_results, strict=True):
         if isinstance(result, Exception):
             target_ids = (
-                no_data_course_ids if _is_no_data(result)
-                else failed_course_ids
+                no_data_course_ids if _is_no_data(result) else failed_course_ids
             )
             target_ids.append(course.kma_course_id)
             continue
@@ -227,15 +221,16 @@ async def collect_snapshot() -> str:
     if failed_course_ids:
         _log(
             "경고: 재시도 후에도 동네예보를 가져오지 못한 코스 "
-            f"{len(failed_course_ids)}개: "
-            + ",".join(map(str, failed_course_ids))
+            f"{len(failed_course_ids)}개: " + ",".join(map(str, failed_course_ids))
         )
 
-    city_area_ids = sorted({
-        course.city_area_id
-        for course in mock_store.courses.values()
-        if course.city_area_id
-    })
+    city_area_ids = sorted(
+        {
+            course.city_area_id
+            for course in mock_store.courses.values()
+            if course.city_area_id
+        }
+    )
     _log(f"관광기후지수 수집 시작: 지역={len(city_area_ids)}개")
 
     async def collect_climate_index(city_area_id: str):
@@ -249,10 +244,7 @@ async def collect_snapshot() -> str:
             )
 
     climate_results = await asyncio.gather(
-        *[
-            collect_climate_index(city_area_id)
-            for city_area_id in city_area_ids
-        ],
+        *[collect_climate_index(city_area_id) for city_area_id in city_area_ids],
         return_exceptions=True,
     )
     for city_area_id, result in zip(
@@ -282,10 +274,7 @@ async def collect_snapshot() -> str:
         "climate_indices": climate_indices,
     }
     if settings.weather_storage == "database":
-        _log(
-            "MariaDB 스냅샷 저장 시작: "
-            f"배치={settings.weather_database_batch_size}건"
-        )
+        _log(f"MariaDB 스냅샷 저장 시작: 배치={settings.weather_database_batch_size}건")
         snapshot_id = await MariaDbWeatherSnapshotWriter(
             progress_callback=lambda label, completed, total: _log(
                 f"MariaDB {label} 저장: {completed}/{total}건"

@@ -26,10 +26,7 @@ def test_local_frontend_origin_is_allowed() -> None:
         )
 
     assert response.status_code == 200
-    assert (
-        response.headers["access-control-allow-origin"]
-        == "http://localhost:5173"
-    )
+    assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
     assert response.headers["access-control-allow-credentials"] == "true"
 
 
@@ -45,8 +42,7 @@ def test_private_network_frontend_origin_is_allowed() -> None:
 
     assert response.status_code == 200
     assert (
-        response.headers["access-control-allow-origin"]
-        == "http://192.168.51.70:5173"
+        response.headers["access-control-allow-origin"] == "http://192.168.51.70:5173"
     )
     assert response.headers["access-control-allow-credentials"] == "true"
 
@@ -61,9 +57,7 @@ def test_login_create_and_list_reservation() -> None:
             "/api/reservations",
             json={
                 "course_id": 1,
-                "reservation_date": (
-                    datetime.now() + timedelta(days=1)
-                ).isoformat(),
+                "reservation_date": (datetime.now() + timedelta(days=1)).isoformat(),
             },
         )
         list_response = client.get("/api/reservations")
@@ -87,9 +81,7 @@ def test_reservation_date_can_be_updated() -> None:
             "/api/reservations",
             json={
                 "course_id": 1,
-                "reservation_date": (
-                    datetime.now() + timedelta(days=1)
-                ).isoformat(),
+                "reservation_date": (datetime.now() + timedelta(days=1)).isoformat(),
             },
         )
         reservation_id = create_response.json()["reservation_id"]
@@ -118,20 +110,14 @@ def test_cancelled_reservation_is_removed_from_my_reservations() -> None:
             "/api/reservations",
             json={
                 "course_id": 1,
-                "reservation_date": (
-                    datetime.now() + timedelta(days=2)
-                ).isoformat(),
+                "reservation_date": (datetime.now() + timedelta(days=2)).isoformat(),
             },
         )
         reservation_id = create_response.json()["reservation_id"]
-        cancel_response = client.delete(
-            f"/api/reservations/{reservation_id}"
-        )
+        cancel_response = client.delete(f"/api/reservations/{reservation_id}")
         list_response = client.get("/api/reservations")
 
-    reservation_ids = {
-        item["id"] for item in list_response.json()["reservations"]
-    }
+    reservation_ids = {item["id"] for item in list_response.json()["reservations"]}
     assert cancel_response.status_code == 200
     assert reservation_id not in reservation_ids
 
@@ -146,9 +132,7 @@ def test_past_reservation_date_is_rejected() -> None:
             "/api/reservations",
             json={
                 "course_id": 1,
-                "reservation_date": (
-                    datetime.now() - timedelta(days=1)
-                ).isoformat(),
+                "reservation_date": (datetime.now() - timedelta(days=1)).isoformat(),
             },
         )
 
@@ -215,16 +199,11 @@ def test_mock_weather_does_not_require_kma_key() -> None:
 
 def test_two_kma_operations_can_be_queried_separately() -> None:
     with TestClient(app) as client:
-        forecast_response = client.get(
-            "/api/courses/1/village-forecast"
-        )
+        forecast_response = client.get("/api/courses/1/village-forecast")
         climate_response = client.get("/api/courses/1/climate-index")
 
     assert forecast_response.status_code == 200
-    assert (
-        forecast_response.json()["source_api"]
-        == "getTourStnVilageFcst1"
-    )
+    assert forecast_response.json()["source_api"] == "getTourStnVilageFcst1"
     assert forecast_response.json()["count"] == 2
     assert climate_response.status_code == 200
     assert climate_response.json()["source_api"] == "getCityTourClmIdx1"
@@ -247,9 +226,7 @@ def test_course_catalog_combines_course_weather_and_reservations() -> None:
     assert body["next_cursor"] == 20
     assert body["has_next"] is True
 
-    first_course = next(
-        course for course in body["courses"] if course["id"] == 1
-    )
+    first_course = next(course for course in body["courses"] if course["id"] == 1)
     assert first_course["name"] == "남호고택에서의 하룻밤"
     assert first_course["weather"]["forecast_at"] == "2026-06-10 18:00"
     assert first_course["weather"]["spot_count"] == 1
@@ -282,9 +259,7 @@ def test_course_catalog_can_exclude_full_forecasts() -> None:
 
     assert response.status_code == 200
     first_course = next(
-        course
-        for course in response.json()["courses"]
-        if course["id"] == 1
+        course for course in response.json()["courses"] if course["id"] == 1
     )
     assert first_course["forecasts"] == []
     assert first_course["spots"] == []
@@ -337,8 +312,7 @@ def test_course_catalog_supports_location_and_theme_filters() -> None:
     body = response.json()
     assert body["total_count"] >= 1
     assert all(
-        item["location"] == "서울특별시"
-        and "문화/예술" in item["themes"]
+        item["location"] == "서울특별시" and "문화/예술" in item["themes"]
         for item in body["courses"]
     )
 

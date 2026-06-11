@@ -134,9 +134,7 @@ class KmaClient:
                 detail="KMA_SERVICE_KEY is not configured",
             )
 
-        async with httpx.AsyncClient(
-            timeout=settings.kma_timeout_seconds
-        ) as client:
+        async with httpx.AsyncClient(timeout=settings.kma_timeout_seconds) as client:
             all_items: list[dict[str, Any]] = []
             page_no = 1
             total_count: int | None = None

@@ -4,9 +4,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
-COURSE_SPOTS_PATH = (
-    Path(__file__).parent.parent / "data" / "tour_course_spots.csv"
-)
+COURSE_SPOTS_PATH = Path(__file__).parent.parent / "data" / "tour_course_spots.csv"
 
 REGION_NAMES = {
     "11": "서울특별시",
