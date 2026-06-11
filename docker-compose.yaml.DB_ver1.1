@@ -1,0 +1,108 @@
+# ==============================================================================
+# [PROJECT RUNBOOK] Production-Ready MariaDB Galera Cluster with Garbd
+# Architecture: 2-Node Active-Active Multi-Master + 1-Node Arbitrator (Quorum: 3)
+# ==============================================================================
+
+version: '3.8'
+
+networks:
+  galera_vpc:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.70.0.0/16
+
+volumes:
+  galera_node1_data:
+    driver: local
+  galera_node2_data:
+    driver: local
+
+services:
+  # ----------------------------------------------------------------------------
+  # [DB NODE 1] Galera Cluster Initial Seed Node (Primary-Bootstrap)
+  # ----------------------------------------------------------------------------
+  galera_node1:
+    image: mariadb:10.11
+    container_name: galera_node1
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    environment:
+      MARIADB_ROOT_PASSWORD: "root_password_here"
+      MARIADB_DATABASE: "stage1_db"
+      MARIADB_USER: "tomcat_user"
+      MARIADB_PASSWORD: "tomcat_password"
+    command: >
+      --wsrep-new-cluster
+      --wsrep-on=ON
+      --wsrep-cluster-name=stage1_cluster
+      --wsrep-cluster-address=gcomm://galera_node1,galera_node2,galera_garbd
+      --wsrep-node-name=galera_node1
+      --wsrep-node-address=10.70.0.30
+      --wsrep-sst-method=mariabackup
+      --binlog-format=ROW
+      --innodb-autoinc-lock-mode=2
+      --bind-address=0.0.0.0
+    ports:
+      - "3306:3306"
+    networks:
+      galera_vpc:
+        ipv4_address: 10.70.0.30
+    volumes:
+      - galera_node1_data:/var/lib/mysql
+
+  # ----------------------------------------------------------------------------
+  # [DB NODE 2] Galera Cluster Multi-Master Node (Active-Active Joiner)
+  # ----------------------------------------------------------------------------
+  galera_node2:
+    image: mariadb:10.11
+    container_name: galera_node2
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+      - galera_node1
+    environment:
+      MARIADB_ROOT_PASSWORD: "root_password_here"
+    command: >
+      --wsrep-on=ON
+      --wsrep-cluster-name=stage1_cluster
+      --wsrep-cluster-address=gcomm://galera_node1,galera_node2,galera_garbd
+      --wsrep-node-name=galera_node2
+      --wsrep-node-address=10.70.0.40
+      --wsrep-sst-method=mariabackup
+      --binlog-format=ROW
+      --innodb-autoinc-lock-mode=2
+      --bind-address=0.0.0.0
+    ports:
+      - "3307:3306"
+    networks:
+      galera_vpc:
+        ipv4_address: 10.70.0.40
+    volumes:
+      - galera_node2_data:/var/lib/mysql
+
+  # ----------------------------------------------------------------------------
+  # [ARBITRATOR] Galera Arbitrator Daemon (Garbd - Stateless Quorum Defender)
+  # ----------------------------------------------------------------------------
+  galera_garbd:
+    image: severalnines/galera-arbitrator:latest
+    container_name: galera_garbd
+    restart: always
+    depends_on:
+      - galera_node1
+      - galera_node2
+    environment:
+      GARBD_ADDRESS: "gcomm://10.70.0.30:4567,10.70.0.40:4567"
+      GARBD_GROUP: "stage1_cluster"
+      GARBD_OPTIONS: "gcs.max_packet_size=1048576"
+    networks:
+      galera_vpc:
+        ipv4_address: 10.70.0.20
