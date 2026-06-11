@@ -9,6 +9,7 @@ services:
   db:
     # 맥(ARM) 및 인텔 환경 모두 호환되는 최신 MariaDB 이미지 사용
     image: mariadb:latest
+
     # 컨테이너 고유 이름을 'wp-db'로 고정
     container_name: wp-db
     # 수동으로 끄기 전까지 컨테이너 다운 시 자동 재시작
@@ -21,6 +22,7 @@ services:
       # 초기 구동 시 자동 생성될 데이터베이스 이름 지정
       MARIADB_DATABASE: wordpress
     # 데이터 보존을 위한 저장소 연결
+    
     volumes:
       # 생성한 db-data 볼륨을 DB 실제 데이터 경로에 매핑
       - db-data:/var/lib/mysql
@@ -78,6 +80,7 @@ volumes:
 # 컨테이너 간 격리 및 내부 통신을 위한 가상 네트워크 정의
 networks:
   # 워드프레스 패키지 전용 가상 네트워크 이름 정의
+
   wp-net:
     # 단일 호스트 기본 가상 스위치 모드인 브릿지(bridge) 드라이버 사용
     driver: bridge

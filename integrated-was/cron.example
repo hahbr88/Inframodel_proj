@@ -1,0 +1,8 @@
+# Host crontab example. Adjust the project path for the VM.
+# KMA publishes at 02, 05, 08, 11, 14, 17, 20, and 23 KST.
+# Run 10 minutes later to avoid requesting before publication is available.
+CRON_TZ=Asia/Seoul
+10 2,5,8,11,14,17,20,23 * * * cd /opt/integrated-was && .venv/bin/python -m app.jobs.collect_kma >> kma-collector.log 2>&1
+
+# Docker Compose alternative:
+# 10 2,5,8,11,14,17,20,23 * * * cd /opt/integrated-was && docker compose --profile collector run --rm kma-collector >> kma-collector.log 2>&1
