@@ -1,0 +1,8 @@
+.env
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+*.py[cod]
+*.db
+data/kma_snapshot.json
+.venv/
