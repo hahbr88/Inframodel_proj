@@ -33,5 +33,6 @@ async def health_check() -> dict[str, str]:
         "environment": settings.environment,
         "data_mode": settings.data_mode,
         "weather_mode": settings.weather_mode,
+        "weather_storage": settings.weather_storage,
         "timezone": "Asia/Seoul",
     }

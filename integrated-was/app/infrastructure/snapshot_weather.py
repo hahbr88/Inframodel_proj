@@ -13,7 +13,7 @@ class SnapshotWeatherClient:
         self._modified_at_ns: int | None = None
         self._snapshot: dict[str, Any] | None = None
 
-    def resolve_base_time(self, suggested_base_time: str) -> str:
+    async def resolve_base_time(self, suggested_base_time: str) -> str:
         return self._load().get("base_time", suggested_base_time)
 
     async def get_village_forecast(

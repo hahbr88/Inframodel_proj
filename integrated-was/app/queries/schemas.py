@@ -99,7 +99,15 @@ class CourseCatalogResponse(BaseModel):
     status: str = "success"
     forecast_time: str
     count: int
+    total_count: int
+    next_cursor: int | None = None
+    has_next: bool
     courses: list[CourseCatalogItem]
+
+
+class CourseDetailResponse(CourseCatalogItem):
+    status: str = "success"
+    forecast_time: str
 
 
 class VillageForecastResponse(BaseModel):

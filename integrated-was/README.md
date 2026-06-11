@@ -72,26 +72,62 @@ CRON_TZ=Asia/Seoul
 
 정확한 경로 예시는 [cron.example](cron.example)에 있습니다. 기상청 발표
 정각에는 데이터가 아직 준비되지 않을 수 있어 10분 뒤 실행하며, 실패하면
-기본 3회, 60초 간격으로 재시도합니다.
+기본 3회, 5초와 10초의 지수 백오프로 재시도합니다.
 
 ## DB 확정 후 전환
 
-MariaDB 비동기 연결 예시는 다음과 같습니다.
+MariaDB에 코스·예약뿐 아니라 날씨 스냅샷도 저장하려면 다음처럼 설정합니다.
 
 ```dotenv
 DATA_MODE=database
-WEATHER_MODE=snapshot
-WRITE_DATABASE_URL=mysql+asyncmy://app:password@db-master:3306/integrated
-READ_DATABASE_URL=mysql+asyncmy://app:password@db-replica:3306/integrated
+WEATHER_MODE=database
+WEATHER_STORAGE=database
+WRITE_DATABASE_URL=mysql+asyncmy://app:password@mariadb:3306/integrated
+READ_DATABASE_URL=mysql+asyncmy://app:password@mariadb:3306/integrated
 REDIS_URL=redis://redis:6379/0
 KMA_SERVICE_KEY=issued-service-key
+WEATHER_DATABASE_BATCH_SIZE=1000
+WEATHER_SNAPSHOT_RETENTION=3
 ```
 
-서비스와 API 코드는 수정하지 않고 환경 변수만 바꿉니다.
+로컬 Docker MariaDB를 실행할 때 필요한 기본 환경변수 예시는 다음과 같습니다.
+
+```dotenv
+MARIADB_DATABASE=integrated
+MARIADB_USER=app
+MARIADB_PASSWORD=app-password
+MARIADB_ROOT_PASSWORD=root-password
+```
+
+```bash
+docker compose --profile database up -d mariadb redis
+docker compose --profile database --profile collector run --rm kma-collector
+docker compose --profile database up --build was
+```
+
+서비스와 API 코드는 수정하지 않고 환경 변수로 저장소를 선택합니다.
 `POST`, `DELETE`, 로그인은 `WRITE_DATABASE_URL`을 사용합니다. `GET` 요청은
 `READ_DATABASE_URL`을 사용하므로 복제 지연이 있을 때 생성 직후 조회 결과가
 잠시 보이지 않을 수 있습니다. 이것은 비동기 복제 환경의 정상적인 eventual
 consistency 특성입니다.
+
+날씨 저장 테이블은 다음 세 개입니다.
+
+```text
+weather_snapshots   # 수집 단위와 COLLECTING/ACTIVE/ARCHIVED/FAILED 상태
+weather_forecasts   # 코스·관광지·예보시각별 날씨
+climate_indices     # 스냅샷·시군구별 관광기후지수
+```
+
+수집기는 새 스냅샷을 `COLLECTING`으로 생성한 뒤 예보를 기본 1,000건씩
+bulk insert합니다. 전체 행 수 검증이 끝난 후에만 짧은 트랜잭션으로 기존
+`ACTIVE`를 `ARCHIVED`로 바꾸고 신규 스냅샷을 `ACTIVE`로 전환합니다. 적재 중
+실패한 스냅샷은 `FAILED`가 되어 사용자 조회에 노출되지 않습니다.
+
+기본 보관 정책은 `ACTIVE` 1개와 최근 `ARCHIVED` 3개입니다. JSON 저장을 계속
+사용하려면 `WEATHER_STORAGE=json`, `WEATHER_MODE=snapshot`을 유지하면 됩니다.
+현재 `create_all`은 로컬 검증용이며 운영 배포에서는 동일 모델을 Alembic
+마이그레이션으로 관리해야 합니다.
 
 ## API
 
@@ -103,6 +139,7 @@ consistency 특성입니다.
 | `DELETE` | `/api/reservations/{id}` | Command: 예약 취소 |
 | `GET` | `/api/courses` | Query: 코스 목록 |
 | `GET` | `/api/course-catalog` | Query: 예약 화면용 코스·날씨·예약 통합 목록 |
+| `GET` | `/api/courses/{id}` | Query: 코스·관광지·날씨·예약 통합 상세 |
 | `GET` | `/api/reservations` | Query: 예약 목록 |
 | `GET` | `/api/courses/{id}/village-forecast` | Query: 관광코스별 동네예보 API |
 | `GET` | `/api/courses/{id}/climate-index` | Query: 시군구별 관광기후지수 API |
@@ -115,9 +152,9 @@ consistency 특성입니다.
 두 공공 API는 같은 `TourStnInfoService1` 서비스와 인증키를 사용하지만
 operation은 각각 `getTourStnVilageFcst1`, `getCityTourClmIdx1`로 구분됩니다.
 
-동네예보 API는 코스별로 `numOfRows=300`을 지정해 한 번에 조회합니다. 현재
-검증 결과 코스 1은 256건, 코스 52는 128건이며 두 코스 요청은 수집기에서
-병렬 실행됩니다. 응답의
+동네예보 API는 코스별로 `numOfRows=300`을 지정하고 `totalCount`까지
+`pageNo`를 자동 순회합니다. 코스별 요청은 최대 10개가 동시에 실행됩니다.
+응답의
 `forecasts` 배열에는 예보시각(`forecast_at`), 관광지점, 테마, 기온, 풍향,
 풍속, 하늘상태, 습도, 강수확률이 모두 포함됩니다.
 
@@ -130,18 +167,30 @@ KMA 원본은 동일 지점과 예보시각의 날씨를 테마별로 반복합�
 `/api/courses/{id}/village-forecast` 같은 세부 API는 상세 화면과 운영 점검용으로
 유지합니다.
 
-기본 카탈로그 응답은 각 코스의 전체 예보를 포함합니다.
+기본 카탈로그 응답은 `id ASC` 커서 방식으로 20개씩 반환하며, 목록에 필요한
+날씨 요약만 포함합니다.
 
 ```text
-GET /api/course-catalog
+GET /api/course-catalog?limit=20
+GET /api/course-catalog?limit=20&cursor=20
 ```
 
-전체 434개 코스에서는 응답이 약 7.5MB입니다. 목록 요약만 필요하면 다음처럼
-상세 예보를 제외할 수 있습니다.
+응답의 `next_cursor`를 다음 요청의 `cursor`로 전달하고 `has_next=false`가
+될 때까지 호출하면 무한 스크롤을 구현할 수 있습니다. 코스명, 지역, 테마,
+관광지명은 `keyword`로 검색합니다.
 
 ```text
-GET /api/course-catalog?include_forecasts=false
+GET /api/course-catalog?limit=20&keyword=홍대
+GET /api/course-catalog?limit=20&location=서울특별시&theme=문화/예술
 ```
+
+`keyword`는 코스명·지역·테마·관광지명을 부분 검색하고, `location`과 `theme`은
+각각 정확히 일치하는 항목만 반환합니다. 여러 조건을 함께 지정하면 모두
+충족하는 코스만 조회합니다.
+
+관광지 목록이나 전체 시간대별 예보가 필요한 상세 용도에서만
+`include_spots=true`, `include_forecasts=true`를 지정합니다.
+상세 화면은 별도 조합 없이 `GET /api/courses/{id}`를 사용하면 됩니다.
 
 `weather_detail_path`, `reservation_path` 같은 URL 문자열은 제거했습니다.
 예약 생성은 기존 계약인 `POST /api/reservations`를 사용합니다.

@@ -29,7 +29,7 @@ class QueryRepositoryPort(Protocol):
 
 
 class WeatherClientPort(Protocol):
-    def resolve_base_time(self, suggested_base_time: str) -> str: ...
+    async def resolve_base_time(self, suggested_base_time: str) -> str: ...
 
     async def get_village_forecast(
         self,

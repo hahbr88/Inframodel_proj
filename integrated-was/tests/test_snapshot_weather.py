@@ -43,7 +43,7 @@ async def test_snapshot_client_reads_collected_data(tmp_path) -> None:
     forecast = await client.get_village_forecast(1, "ignored")
     climate = await client.get_climate_index("35", "ignored")
 
-    assert client.resolve_base_time("ignored") == "2026061014"
+    assert await client.resolve_base_time("ignored") == "2026061014"
     assert forecast[0]["temperature"] == 25.0
     assert climate["score"] == 80.0
 

@@ -51,7 +51,6 @@ class MockStore:
             course = self.courses[course_id]
             course.name = item["name"]
             course.location = item["location"]
-            course.city_area_id = item["city_area_id"]
         self.reservations = {
             item["id"]: MockReservation(
                 id=item["id"],
@@ -166,7 +165,7 @@ class MockWeatherClient:
         self.store = store
 
     @staticmethod
-    def resolve_base_time(suggested_base_time: str) -> str:
+    async def resolve_base_time(suggested_base_time: str) -> str:
         return suggested_base_time
 
     async def get_village_forecast(

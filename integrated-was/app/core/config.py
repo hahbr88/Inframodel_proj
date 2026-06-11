@@ -18,7 +18,10 @@ class Settings(BaseSettings):
     environment: str = "local"
     api_prefix: str = "/api"
     data_mode: Literal["mock", "database"] = "mock"
-    weather_mode: Literal["mock", "snapshot", "live"] = "mock"
+    weather_mode: Literal["mock", "snapshot", "database", "live"] = "mock"
+    weather_storage: Literal["json", "database"] = "json"
+    weather_database_batch_size: int = 1000
+    weather_snapshot_retention: int = 3
     write_database_url: str = "sqlite+aiosqlite:///./integrated_was.db"
     read_database_url: str = "sqlite+aiosqlite:///./integrated_was.db"
     redis_url: str = "redis://localhost:6379/0"
@@ -35,7 +38,7 @@ class Settings(BaseSettings):
     kma_timeout_seconds: float = 5.0
     kma_snapshot_path: str = "./data/kma_snapshot.json"
     kma_collection_retries: int = 3
-    kma_collection_retry_seconds: int = 60
+    kma_collection_retry_seconds: int = 5
     kma_collection_concurrency: int = 10
     kma_course_limit: int = 0
     cookie_secure: bool = False

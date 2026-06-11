@@ -99,11 +99,20 @@ def test_two_kma_operations_can_be_queried_separately() -> None:
 
 def test_course_catalog_combines_course_weather_and_reservations() -> None:
     with TestClient(app) as client:
-        response = client.get("/api/course-catalog")
+        response = client.get(
+            "/api/course-catalog",
+            params={
+                "include_spots": "true",
+                "include_forecasts": "true",
+            },
+        )
 
     assert response.status_code == 200
     body = response.json()
-    assert body["count"] == 434
+    assert body["count"] == 20
+    assert body["total_count"] == 434
+    assert body["next_cursor"] == 20
+    assert body["has_next"] is True
 
     first_course = next(
         course for course in body["courses"] if course["id"] == 1
@@ -145,6 +154,82 @@ def test_course_catalog_can_exclude_full_forecasts() -> None:
         if course["id"] == 1
     )
     assert first_course["forecasts"] == []
+    assert first_course["spots"] == []
+
+
+def test_course_catalog_supports_cursor_pagination() -> None:
+    with TestClient(app) as client:
+        first_response = client.get(
+            "/api/course-catalog",
+            params={"limit": 2},
+        )
+        second_response = client.get(
+            "/api/course-catalog",
+            params={
+                "limit": 2,
+                "cursor": first_response.json()["next_cursor"],
+            },
+        )
+
+    assert first_response.status_code == 200
+    assert [item["id"] for item in first_response.json()["courses"]] == [1, 2]
+    assert [item["id"] for item in second_response.json()["courses"]] == [3, 4]
+
+
+def test_course_catalog_supports_keyword_search() -> None:
+    with TestClient(app) as client:
+        response = client.get(
+            "/api/course-catalog",
+            params={"keyword": "홍대"},
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total_count"] >= 1
+    assert any("홍대" in item["name"] for item in body["courses"])
+
+
+def test_course_catalog_supports_location_and_theme_filters() -> None:
+    with TestClient(app) as client:
+        response = client.get(
+            "/api/course-catalog",
+            params={
+                "location": "서울특별시",
+                "theme": "문화/예술",
+                "limit": 100,
+            },
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total_count"] >= 1
+    assert all(
+        item["location"] == "서울특별시"
+        and "문화/예술" in item["themes"]
+        for item in body["courses"]
+    )
+
+
+def test_course_detail_combines_spots_weather_and_reservations() -> None:
+    with TestClient(app) as client:
+        response = client.get("/api/courses/1")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == 1
+    assert body["spot_count"] == 4
+    assert len(body["spots"]) == 4
+    assert len(body["forecasts"]) == 2
+    assert body["weather_available"] is True
+    assert body["active_reservation_count"] >= 1
+    assert body["forecast_time"]
+
+
+def test_unknown_course_detail_returns_not_found() -> None:
+    with TestClient(app) as client:
+        response = client.get("/api/courses/99999")
+
+    assert response.status_code == 404
 
 
 def test_course_list_is_loaded_from_kma_reference_csv() -> None:
@@ -155,6 +240,7 @@ def test_course_list_is_loaded_from_kma_reference_csv() -> None:
     body = response.json()
     assert body["count"] == 434
     assert body["courses"][0]["id"] == 1
+    assert body["courses"][0]["city_area_id"] == "4792000000"
     assert body["courses"][0]["spot_count"] == 4
     assert len(body["courses"][0]["spots"]) == 4
 
