@@ -1,0 +1,68 @@
+services:
+  totalwas:
+    image: node:22-alpine
+    container_name: totalwas
+    environment:
+      - TZ=Asia/Seoul
+      - NODE_ENV=production
+    networks:
+      - priv-net
+    # ------------------ 아래 부분을 수정/추가 하세요 ------------------
+    volumes:
+      - ./app:/src
+    working_dir: /src
+    restart: always
+    # 패키지 설치(npm install) 후 서버 실행(npm start) 하도록 커맨드 변경
+    command: sh -c "npm install && npm start"
+    ports:
+      - "3000:3000" # 호스트에서 직접 확인해볼 수 있도록 포트 포워딩 추가
+    # ---------------------------------------------------------------
+
+  backup:
+    image: mariadb:11.4
+    container_name: db-backup
+    environment:
+      - TZ=Asia/Seoul
+      - MYSQL_ROOT_PASSWORD=your_secure_root_password
+      - MYSQL_DATABASE=userdb_backup
+    networks:
+      - priv-net
+    volumes:
+      - mariadb_backup_data:/var/lib/mysql
+    restart: always
+    command: --read-only=ON
+
+  data:
+    image: mariadb:11.4
+    container_name: db-data
+    environment:
+      - TZ=Asia/Seoul
+      - MYSQL_ROOT_PASSWORD=your_secure_root_password
+      - MYSQL_DATABASE=userdb_backup
+    networks:
+      - priv-net
+    volumes:
+      - mariadb_main_data:/var/lib/mysql
+    restart: always
+
+  cacheDB:
+    image: redis:7.2-alpine
+    container_name: cacheDB
+    ports:
+      - "6379:6379"
+    environment:
+      - TZ=Asia/Seoul
+    networks:
+      - priv-net
+    restart: always
+
+networks:
+  priv-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.70.3.0/24
+
+volumes:
+  mariadb_main_data:
+  mariadb_backup_data:
