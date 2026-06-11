@@ -13,6 +13,12 @@ class CommandRepositoryPort(Protocol):
         reservation_date: datetime,
     ) -> Any: ...
 
+    async def update_reservation_date(
+        self,
+        reservation_id: int,
+        reservation_date: datetime,
+    ) -> Any | None: ...
+
     async def cancel_reservation(self, reservation_id: int) -> Any | None: ...
 
     async def commit(self) -> None: ...
@@ -29,7 +35,7 @@ class QueryRepositoryPort(Protocol):
 
 
 class WeatherClientPort(Protocol):
-    def resolve_base_time(self, suggested_base_time: str) -> str: ...
+    async def resolve_base_time(self, suggested_base_time: str) -> str: ...
 
     async def get_village_forecast(
         self,

@@ -26,14 +26,14 @@
       "name": "남호고택에서의 하룻밤",
       "location": "경상북도",
       "kma_course_id": 1,
-      "city_area_id": "35"
+      "city_area_id": "4792000000"
     },
     {
       "id": 52,
       "name": "자유여행코스 - 홍대",
       "location": "서울특별시",
       "kma_course_id": 52,
-      "city_area_id": "11"
+      "city_area_id": "1144000000"
     }
   ],
   "reservations": [
@@ -96,11 +96,11 @@
     ]
   },
   "climate_indices": {
-    "35": {
+    "4792000000": {
       "score": 78.0,
       "grade": "좋음"
     },
-    "11": {
+    "1144000000": {
       "score": 82.0,
       "grade": "매우 좋음"
     }

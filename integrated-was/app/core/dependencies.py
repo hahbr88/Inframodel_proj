@@ -3,6 +3,7 @@ from collections.abc import AsyncIterator
 from app.core.config import settings
 from app.core.database import ReadSessionFactory, WriteSessionFactory
 from app.infrastructure.kma_client import kma_client
+from app.infrastructure.database_weather import database_weather_client
 from app.infrastructure.mock_store import (
     mock_command_repository,
     mock_query_repository,
@@ -40,4 +41,6 @@ def get_weather_client() -> WeatherClientPort:
         return mock_weather_client
     if settings.weather_mode == "snapshot":
         return snapshot_weather_client
+    if settings.weather_mode == "database":
+        return database_weather_client
     return kma_client

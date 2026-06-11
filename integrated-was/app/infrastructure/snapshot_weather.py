@@ -13,7 +13,7 @@ class SnapshotWeatherClient:
         self._modified_at_ns: int | None = None
         self._snapshot: dict[str, Any] | None = None
 
-    def resolve_base_time(self, suggested_base_time: str) -> str:
+    async def resolve_base_time(self, suggested_base_time: str) -> str:
         return self._load().get("base_time", suggested_base_time)
 
     async def get_village_forecast(
@@ -49,10 +49,7 @@ class SnapshotWeatherClient:
     def _load(self) -> dict[str, Any]:
         try:
             modified_at_ns = self.snapshot_path.stat().st_mtime_ns
-            if (
-                self._snapshot is None
-                or self._modified_at_ns != modified_at_ns
-            ):
+            if self._snapshot is None or self._modified_at_ns != modified_at_ns:
                 self._snapshot = json.loads(
                     self.snapshot_path.read_text(encoding="utf-8")
                 )

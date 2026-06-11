@@ -4,9 +4,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
-COURSE_SPOTS_PATH = (
-    Path(__file__).parent.parent / "data" / "tour_course_spots.csv"
-)
+COURSE_SPOTS_PATH = Path(__file__).parent.parent / "data" / "tour_course_spots.csv"
 
 REGION_NAMES = {
     "11": "서울특별시",
@@ -26,6 +24,16 @@ REGION_NAMES = {
     "47": "경상북도",
     "48": "경상남도",
     "50": "제주특별자치도",
+}
+
+CITY_AREA_ID_ALIASES = {
+    # API reference uses consolidated or current municipality codes.
+    "4127300000": "4127100000",  # Ansan
+    "4511300000": "4511100000",  # Jeonju
+    "4711300000": "4711100000",  # Pohang
+    "4772000000": "2772000000",  # Gunwi (Gyeongbuk -> Daegu)
+    "4812500000": "4812100000",  # Former Masan -> Changwon
+    "4812900000": "4812100000",  # Former Jinhae -> Changwon
 }
 
 
@@ -89,6 +97,7 @@ def load_course_catalog(
             name=_derive_course_name(spots),
             location=_derive_location(spots),
             kma_course_id=course_id,
+            city_area_id=_derive_city_area_id(spots),
             spots=spots,
         )
     return courses
@@ -106,6 +115,17 @@ def _derive_location(spots: list[CourseSpot]) -> str:
     region_codes = [spot.area_id[:2] for spot in spots]
     region_code = Counter(region_codes).most_common(1)[0][0]
     return REGION_NAMES.get(region_code, "지역 정보 없음")
+
+
+def _derive_city_area_id(spots: list[CourseSpot]) -> str:
+    city_codes = [
+        CITY_AREA_ID_ALIASES.get(
+            f"{spot.area_id[:5]}00000",
+            f"{spot.area_id[:5]}00000",
+        )
+        for spot in spots
+    ]
+    return Counter(city_codes).most_common(1)[0][0]
 
 
 def _strip_area_prefix(name: str) -> str:

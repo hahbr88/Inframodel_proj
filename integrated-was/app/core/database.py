@@ -57,23 +57,25 @@ async def initialize_database() -> None:
                 )
             )
 
-        existing_course_ids = set(
-            (await session.scalars(select(Course.id))).all()
-        )
+        existing_courses = {
+            course.id: course
+            for course in (await session.scalars(select(Course))).all()
+        }
         catalog = load_course_catalog()
         known_overrides = {
-            1: ("남호고택에서의 하룻밤", "경상북도", "35"),
-            52: ("자유여행코스 - 홍대", "서울특별시", "11"),
+            1: ("남호고택에서의 하룻밤", "경상북도"),
+            52: ("자유여행코스 - 홍대", "서울특별시"),
         }
         for course_id, catalog_course in catalog.items():
-            if course_id in existing_course_ids:
+            existing_course = existing_courses.get(course_id)
+            if existing_course is not None:
+                existing_course.city_area_id = catalog_course.city_area_id
                 continue
-            name, location, city_area_id = known_overrides.get(
+            name, location = known_overrides.get(
                 course_id,
                 (
                     catalog_course.name,
                     catalog_course.location,
-                    "",
                 ),
             )
             session.add(
@@ -82,7 +84,7 @@ async def initialize_database() -> None:
                     name=name,
                     location=location,
                     kma_course_id=course_id,
-                    city_area_id=city_area_id,
+                    city_area_id=catalog_course.city_area_id,
                 )
             )
         await session.commit()

@@ -13,6 +13,10 @@ class ReservationCreate(BaseModel):
     reservation_date: datetime
 
 
+class ReservationUpdate(BaseModel):
+    reservation_date: datetime
+
+
 class CommandResponse(BaseModel):
     status: str = "success"
     message: str
@@ -20,4 +24,3 @@ class CommandResponse(BaseModel):
 
 class ReservationCreatedResponse(CommandResponse):
     reservation_id: int
-

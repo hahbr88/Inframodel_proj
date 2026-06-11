@@ -8,6 +8,7 @@ from app.core.security import require_authenticated_user
 from app.infrastructure.ports import QueryRepositoryPort, WeatherClientPort
 from app.queries.schemas import (
     ClimateIndexResponse,
+    CourseDetailResponse,
     CourseCatalogResponse,
     CourseListResponse,
     ReservationListResponse,
@@ -62,13 +63,66 @@ async def list_courses(
     tags=["Query"],
 )
 async def get_course_catalog(
+    cursor: int | None = Query(
+        default=None,
+        ge=0,
+        description="이전 응답의 next_cursor 값입니다.",
+    ),
+    limit: int = Query(
+        default=20,
+        ge=1,
+        le=100,
+        description="한 번에 반환할 코스 수입니다.",
+    ),
+    keyword: str | None = Query(
+        default=None,
+        min_length=1,
+        max_length=100,
+        description="코스명, 지역, 테마, 관광지명 검색어입니다.",
+    ),
+    location: str | None = Query(
+        default=None,
+        min_length=1,
+        max_length=100,
+        description="지역명 정확 일치 필터입니다.",
+    ),
+    theme: str | None = Query(
+        default=None,
+        min_length=1,
+        max_length=100,
+        description="테마명 정확 일치 필터입니다.",
+    ),
+    include_spots: bool = Query(
+        default=False,
+        description="true이면 코스에 포함된 관광지 목록을 반환합니다.",
+    ),
     include_forecasts: bool = Query(
-        default=True,
-        description="false이면 각 코스의 전체 예보를 제외하고 요약만 반환합니다.",
+        default=False,
+        description="true이면 각 코스의 전체 시간대별 예보를 반환합니다.",
     ),
     service: CourseQueryService = Depends(get_course_catalog_service),
 ) -> CourseCatalogResponse:
-    return await service.get_catalog(include_forecasts=include_forecasts)
+    return await service.get_catalog(
+        cursor=cursor,
+        limit=limit,
+        keyword=keyword,
+        location=location,
+        theme=theme,
+        include_spots=include_spots,
+        include_forecasts=include_forecasts,
+    )
+
+
+@router.get(
+    "/courses/{course_id}",
+    response_model=CourseDetailResponse,
+    tags=["Query"],
+)
+async def get_course_detail(
+    course_id: int,
+    service: CourseQueryService = Depends(get_course_catalog_service),
+) -> CourseDetailResponse:
+    return await service.get_detail(course_id)
 
 
 @router.get(

@@ -45,30 +45,31 @@ class MockStore:
             )
             for item in payload["users"]
         }
+        # Mock mode must remain usable without a database or fixture-managed user.
+        self.users[settings.demo_username] = MockUser(
+            id=1,
+            username=settings.demo_username,
+            password_hash=hash_password(settings.demo_password),
+        )
         self.courses = load_course_catalog()
         for item in payload["courses"]:
             course_id = item["kma_course_id"]
             course = self.courses[course_id]
             course.name = item["name"]
             course.location = item["location"]
-            course.city_area_id = item["city_area_id"]
         self.reservations = {
             item["id"]: MockReservation(
                 id=item["id"],
                 course_id=item["course_id"],
-                reservation_date=datetime.fromisoformat(
-                    item["reservation_date"]
-                ),
+                reservation_date=datetime.fromisoformat(item["reservation_date"]),
                 status=item["status"],
                 course=self.courses[item["course_id"]],
             )
             for item in payload["reservations"]
         }
-        self.village_forecasts: dict[str, Any] = payload[
-            "village_forecasts"
-        ]
+        self.village_forecasts: dict[str, Any] = payload["village_forecasts"]
         self.climate_indices: dict[str, Any] = payload["climate_indices"]
-        self.pending_snapshot: dict[int, str] | None = None
+        self.pending_snapshot: dict[int, tuple[str, datetime]] | None = None
         self.refresh_course_metadata()
 
     def refresh_course_metadata(self) -> None:
@@ -126,9 +127,28 @@ class MockCommandRepository:
         reservation = self.store.reservations.get(reservation_id)
         if reservation is not None:
             self.store.pending_snapshot = {
-                reservation.id: reservation.status,
+                reservation.id: (
+                    reservation.status,
+                    reservation.reservation_date,
+                ),
             }
             reservation.status = "CANCELLED"
+        return reservation
+
+    async def update_reservation_date(
+        self,
+        reservation_id: int,
+        reservation_date: datetime,
+    ) -> MockReservation | None:
+        reservation = self.store.reservations.get(reservation_id)
+        if reservation is not None:
+            self.store.pending_snapshot = {
+                reservation.id: (
+                    reservation.status,
+                    reservation.reservation_date,
+                ),
+            }
+            reservation.reservation_date = reservation_date
         return reservation
 
     async def commit(self) -> None:
@@ -136,8 +156,11 @@ class MockCommandRepository:
 
     async def rollback(self) -> None:
         if self.store.pending_snapshot:
-            for reservation_id, old_status in self.store.pending_snapshot.items():
-                self.store.reservations[reservation_id].status = old_status
+            for reservation_id, previous in self.store.pending_snapshot.items():
+                old_status, old_date = previous
+                reservation = self.store.reservations[reservation_id]
+                reservation.status = old_status
+                reservation.reservation_date = old_date
         self.store.pending_snapshot = None
 
 
@@ -166,7 +189,7 @@ class MockWeatherClient:
         self.store = store
 
     @staticmethod
-    def resolve_base_time(suggested_base_time: str) -> str:
+    async def resolve_base_time(suggested_base_time: str) -> str:
         return suggested_base_time
 
     async def get_village_forecast(
