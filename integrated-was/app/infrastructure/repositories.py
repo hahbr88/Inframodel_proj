@@ -36,6 +36,17 @@ class CommandRepository:
         await self.session.refresh(reservation)
         return reservation
 
+    async def update_reservation_date(
+        self,
+        reservation_id: int,
+        reservation_date: datetime,
+    ) -> Reservation | None:
+        reservation = await self.session.get(Reservation, reservation_id)
+        if reservation is not None:
+            reservation.reservation_date = reservation_date
+            await self.session.flush()
+        return reservation
+
     async def cancel_reservation(self, reservation_id: int) -> Reservation | None:
         reservation = await self.session.get(Reservation, reservation_id)
         if reservation is not None:

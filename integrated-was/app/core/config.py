@@ -31,6 +31,17 @@ class Settings(BaseSettings):
     )
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60
+    demo_username: str = "admin"
+    demo_password: str = "password123"
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    cors_origin_regex: str = (
+        r"^https?://("
+        r"localhost|127\.0\.0\.1|"
+        r"10(?:\.\d{1,3}){3}|"
+        r"192\.168(?:\.\d{1,3}){2}|"
+        r"172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}"
+        r"):5173$"
+    )
     kma_service_key: str = ""
     kma_base_url: str = (
         "https://apis.data.go.kr/1360000/TourStnInfoService1"

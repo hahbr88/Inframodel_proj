@@ -15,6 +15,42 @@ def test_health_check() -> None:
     assert response.json()["data_mode"] == "mock"
 
 
+def test_local_frontend_origin_is_allowed() -> None:
+    with TestClient(app) as client:
+        response = client.options(
+            "/api/course-catalog",
+            headers={
+                "Origin": "http://localhost:5173",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+
+    assert response.status_code == 200
+    assert (
+        response.headers["access-control-allow-origin"]
+        == "http://localhost:5173"
+    )
+    assert response.headers["access-control-allow-credentials"] == "true"
+
+
+def test_private_network_frontend_origin_is_allowed() -> None:
+    with TestClient(app) as client:
+        response = client.options(
+            "/api/course-catalog",
+            headers={
+                "Origin": "http://192.168.51.70:5173",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+
+    assert response.status_code == 200
+    assert (
+        response.headers["access-control-allow-origin"]
+        == "http://192.168.51.70:5173"
+    )
+    assert response.headers["access-control-allow-credentials"] == "true"
+
+
 def test_login_create_and_list_reservation() -> None:
     with TestClient(app) as client:
         login_response = client.post(
@@ -37,6 +73,103 @@ def test_login_create_and_list_reservation() -> None:
     assert create_response.status_code == 201
     assert list_response.status_code == 200
     assert list_response.json()["count"] >= 1
+
+
+def test_reservation_date_can_be_updated() -> None:
+    updated_date = datetime.now() + timedelta(days=3)
+
+    with TestClient(app) as client:
+        client.post(
+            "/api/auth/login",
+            json={"username": "admin", "password": "password123"},
+        )
+        create_response = client.post(
+            "/api/reservations",
+            json={
+                "course_id": 1,
+                "reservation_date": (
+                    datetime.now() + timedelta(days=1)
+                ).isoformat(),
+            },
+        )
+        reservation_id = create_response.json()["reservation_id"]
+        update_response = client.patch(
+            f"/api/reservations/{reservation_id}",
+            json={"reservation_date": updated_date.isoformat()},
+        )
+        list_response = client.get("/api/reservations")
+
+    updated = next(
+        item
+        for item in list_response.json()["reservations"]
+        if item["id"] == reservation_id
+    )
+    assert update_response.status_code == 200
+    assert datetime.fromisoformat(updated["reservation_date"]) == updated_date
+
+
+def test_cancelled_reservation_is_removed_from_my_reservations() -> None:
+    with TestClient(app) as client:
+        client.post(
+            "/api/auth/login",
+            json={"username": "admin", "password": "password123"},
+        )
+        create_response = client.post(
+            "/api/reservations",
+            json={
+                "course_id": 1,
+                "reservation_date": (
+                    datetime.now() + timedelta(days=2)
+                ).isoformat(),
+            },
+        )
+        reservation_id = create_response.json()["reservation_id"]
+        cancel_response = client.delete(
+            f"/api/reservations/{reservation_id}"
+        )
+        list_response = client.get("/api/reservations")
+
+    reservation_ids = {
+        item["id"] for item in list_response.json()["reservations"]
+    }
+    assert cancel_response.status_code == 200
+    assert reservation_id not in reservation_ids
+
+
+def test_past_reservation_date_is_rejected() -> None:
+    with TestClient(app) as client:
+        client.post(
+            "/api/auth/login",
+            json={"username": "admin", "password": "password123"},
+        )
+        response = client.post(
+            "/api/reservations",
+            json={
+                "course_id": 1,
+                "reservation_date": (
+                    datetime.now() - timedelta(days=1)
+                ).isoformat(),
+            },
+        )
+
+    assert response.status_code == 422
+
+
+def test_demo_account_is_available_without_database() -> None:
+    assert settings.data_mode == "mock"
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/auth/login",
+            json={
+                "username": settings.demo_username,
+                "password": settings.demo_password,
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json()["message"] == "Login succeeded"
+    assert "access_token" in response.cookies
 
 
 def test_unknown_course_is_rejected() -> None:

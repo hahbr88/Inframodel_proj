@@ -5,6 +5,7 @@ from app.commands.schemas import (
     LoginRequest,
     ReservationCreate,
     ReservationCreatedResponse,
+    ReservationUpdate,
 )
 from app.commands.services import AuthCommandService, ReservationCommandService
 from app.core.config import settings
@@ -72,6 +73,21 @@ async def create_reservation(
         message="Reservation was created",
         reservation_id=reservation_id,
     )
+
+
+@router.patch(
+    "/reservations/{reservation_id}",
+    response_model=CommandResponse,
+    tags=["Command"],
+)
+async def update_reservation(
+    reservation_id: int,
+    payload: ReservationUpdate,
+    _user_id: int = Depends(require_authenticated_user),
+    service: ReservationCommandService = Depends(get_reservation_service),
+) -> CommandResponse:
+    await service.update(reservation_id, payload)
+    return CommandResponse(message="Reservation was updated")
 
 
 @router.delete(

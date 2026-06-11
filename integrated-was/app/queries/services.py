@@ -264,6 +264,7 @@ class ReservationQueryService:
                 status=reservation.status,
             )
             for reservation in reservations
+            if reservation.status != "CANCELLED"
         ]
         return ReservationListResponse(count=len(items), reservations=items)
 

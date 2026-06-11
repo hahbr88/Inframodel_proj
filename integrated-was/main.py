@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.commands.routers import router as command_router
 from app.core.config import settings
@@ -20,6 +21,18 @@ app = FastAPI(
     version="1.0.0",
     description="CQRS-based weather, course, reservation, and authentication WAS",
     lifespan=lifespan,
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        origin.strip()
+        for origin in settings.cors_origins.split(",")
+        if origin.strip()
+    ],
+    allow_origin_regex=settings.cors_origin_regex or None,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 app.include_router(command_router, prefix=settings.api_prefix)
 app.include_router(query_router, prefix=settings.api_prefix)
