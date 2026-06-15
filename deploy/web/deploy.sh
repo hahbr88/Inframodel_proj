@@ -27,7 +27,7 @@ if [[ $RESET_COMPOSE == yes ]]; then
   docker compose down
 fi
 
-docker compose up -d --build
+docker compose up -d --build --force-recreate
 docker compose ps
 
 echo "사용자 웹: http://$(hostname -I | awk '{print $1}')/"
