@@ -50,10 +50,10 @@ class CourseQueryService:
         if self.weather_client is None:
             raise RuntimeError("Weather client is required for course catalog")
 
-        courses, reservations = await asyncio.gather(
-            self.repository.list_courses(),
-            self.repository.list_reservations(),
-        )
+        # QueryRepository owns one AsyncSession, which cannot execute concurrent
+        # operations while it is provisioning a database connection.
+        courses = await self.repository.list_courses()
+        reservations = await self.repository.list_reservations()
         active_counts: dict[int, int] = {}
         for reservation in reservations:
             if reservation.status != "CANCELLED":
@@ -131,10 +131,8 @@ class CourseQueryService:
         if self.weather_client is None:
             raise RuntimeError("Weather client is required for course detail")
 
-        course, reservations = await asyncio.gather(
-            self.repository.get_course(course_id),
-            self.repository.list_reservations(),
-        )
+        course = await self.repository.get_course(course_id)
+        reservations = await self.repository.list_reservations()
         if course is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
