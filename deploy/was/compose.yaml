@@ -18,3 +18,12 @@ services:
       timeout: 5s
       retries: 10
       start_period: 20s
+
+  kma-collector:
+    build:
+      context: ../../apps/integrated-was
+      dockerfile: Dockerfile
+    profiles: ["collector"]
+    command: python -m app.jobs.collect_kma
+    env_file:
+      - ${ENV_FILE:-.env}
