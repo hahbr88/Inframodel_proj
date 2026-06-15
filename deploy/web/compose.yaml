@@ -1,0 +1,41 @@
+services:
+  gateway:
+    image: nginx:1.26-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    environment:
+      WAS_HOST: ${WAS_HOST}
+      WAS_PORT: ${WAS_PORT:-8000}
+    volumes:
+      - ./gateway/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+    depends_on:
+      service-web:
+        condition: service_healthy
+      admin-web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  service-web:
+    build:
+      context: ../../apps/service-web
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  admin-web:
+    build:
+      context: ../../apps/admin-web
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/admin/"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
