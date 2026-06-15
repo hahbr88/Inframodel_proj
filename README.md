@@ -2,6 +2,12 @@
 
 이번 팀 프로젝트는 Linux 3-Tier 서비스를 Docker Compose 구조로 전환하고 AWS 배포 가능성을 검증하는 프로젝트입니다.
 
+## Docker Compose 3-Tier 문서
+
+- [구축 가이드](docs/docker-compose-3tier/01-deployment-guide.md)
+- [VMware 검증 결과](docs/docker-compose-3tier/02-validation-result.md)
+- [빠른 배포 명령](deploy/README.md)
+
 ## VScode 다운로드 및 환경설정
 
 [여기](vscode_settting.md)를 클릭해서 확인
