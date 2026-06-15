@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.core.config import settings
-from app.core.security import hash_password
+from app.core.security import hash_password, verify_password
 from app.domain.models import Base, Course, User
 from app.infrastructure.course_catalog import load_course_catalog
 
@@ -49,13 +49,21 @@ async def initialize_database() -> None:
         await connection.run_sync(Base.metadata.create_all)
 
     async with WriteSessionFactory() as session:
-        if not await session.scalar(select(User.id).limit(1)):
+        admin_user = await session.scalar(
+            select(User).where(User.username == settings.admin_username)
+        )
+        if admin_user is None:
             session.add(
                 User(
                     username=settings.admin_username,
                     password_hash=hash_password(settings.admin_password),
                 )
             )
+        elif not verify_password(
+            settings.admin_password,
+            admin_user.password_hash,
+        ):
+            admin_user.password_hash = hash_password(settings.admin_password)
 
         existing_courses = {
             course.id: course

@@ -27,7 +27,7 @@ export function LoginPage() {
   const form = useForm({
     initialValues: {
       username: 'admin',
-      password: 'password123',
+      password: '',
     },
     validate: {
       username: (value) => (!value ? '아이디를 입력해 주세요.' : null),
