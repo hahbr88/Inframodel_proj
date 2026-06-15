@@ -52,8 +52,8 @@ async def initialize_database() -> None:
         if not await session.scalar(select(User.id).limit(1)):
             session.add(
                 User(
-                    username="admin",
-                    password_hash=hash_password("password123"),
+                    username=settings.admin_username,
+                    password_hash=hash_password(settings.admin_password),
                 )
             )
 

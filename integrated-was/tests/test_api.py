@@ -47,6 +47,54 @@ def test_private_network_frontend_origin_is_allowed() -> None:
     assert response.headers["access-control-allow-credentials"] == "true"
 
 
+def test_local_admin_frontend_origin_is_allowed() -> None:
+    with TestClient(app) as client:
+        response = client.options(
+            "/api/admin/dashboard",
+            headers={
+                "Origin": "http://localhost:5174",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:5174"
+    assert response.headers["access-control-allow-credentials"] == "true"
+
+
+def test_admin_api_requires_separate_admin_authentication() -> None:
+    with TestClient(app) as client:
+        client.post(
+            "/api/auth/login",
+            json={"username": "admin", "password": "password123"},
+        )
+        response = client.get("/api/admin/dashboard")
+
+    assert response.status_code == 401
+
+
+def test_admin_login_dashboard_reservations_and_courses() -> None:
+    with TestClient(app) as client:
+        login_response = client.post(
+            "/api/admin/auth/login",
+            json={"username": "admin", "password": "password123"},
+        )
+        session_response = client.get("/api/admin/session")
+        dashboard_response = client.get("/api/admin/dashboard")
+        reservations_response = client.get("/api/admin/reservations")
+        courses_response = client.get("/api/admin/courses", params={"limit": 2})
+
+    assert login_response.status_code == 200
+    assert "admin_access_token" in login_response.cookies
+    assert session_response.status_code == 200
+    assert session_response.json()["role"] == "ADMIN"
+    assert dashboard_response.status_code == 200
+    assert dashboard_response.json()["course_count"] == 434
+    assert reservations_response.status_code == 200
+    assert courses_response.status_code == 200
+    assert courses_response.json()["count"] == 2
+
+
 def test_login_create_and_list_reservation() -> None:
     with TestClient(app) as client:
         login_response = client.post(

@@ -15,6 +15,10 @@ services:
       READ_DATABASE_URL: ${READ_DATABASE_URL:-sqlite+aiosqlite:////app/data/integrated_was.db}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       JWT_SECRET: ${JWT_SECRET:-change-this-secret-in-production}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-password123}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174}
+      CORS_ORIGIN_REGEX: ${CORS_ORIGIN_REGEX:-^https?://(localhost|127\.0\.0\.1|10(\.[0-9]{1,3}){3}|192\.168(\.[0-9]{1,3}){2}|172\.(1[6-9]|2[0-9]|3[01])(\.[0-9]{1,3}){2}):(5173|5174)$}
       KMA_SERVICE_KEY: ${KMA_SERVICE_KEY:-}
       KMA_SNAPSHOT_PATH: /app/data/kma_snapshot.json
       KMA_COLLECTION_CONCURRENCY: ${KMA_COLLECTION_CONCURRENCY:-10}

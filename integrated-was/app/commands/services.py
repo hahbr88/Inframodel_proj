@@ -25,7 +25,7 @@ class AuthCommandService:
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid username or password",
             )
-        return create_access_token(str(user.id))
+        return create_access_token(str(user.id), getattr(user, "role", "USER"))
 
 
 class ReservationCommandService:

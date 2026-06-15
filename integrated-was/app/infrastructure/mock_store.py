@@ -51,6 +51,11 @@ class MockStore:
             username=settings.demo_username,
             password_hash=hash_password(settings.demo_password),
         )
+        self.users[settings.admin_username] = MockUser(
+            id=1,
+            username=settings.admin_username,
+            password_hash=hash_password(settings.admin_password),
+        )
         self.courses = load_course_catalog()
         for item in payload["courses"]:
             course_id = item["kma_course_id"]

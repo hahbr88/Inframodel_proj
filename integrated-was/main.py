@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.admin.routers import router as admin_router
 from app.commands.routers import router as command_router
 from app.core.config import settings
 from app.core.database import initialize_database
@@ -34,6 +35,7 @@ app.add_middleware(
 )
 app.include_router(command_router, prefix=settings.api_prefix)
 app.include_router(query_router, prefix=settings.api_prefix)
+app.include_router(admin_router, prefix=settings.api_prefix)
 
 
 @app.get("/", tags=["System"])
