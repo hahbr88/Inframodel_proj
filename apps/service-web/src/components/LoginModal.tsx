@@ -1,7 +1,7 @@
 import { Alert, Button, Modal, PasswordInput, Stack, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useMutation } from '@tanstack/react-query';
-import { IconInfoCircle, IconLogin2 } from '@tabler/icons-react';
+import { IconLogin2 } from '@tabler/icons-react';
 import { login } from '../api/auth';
 import { getApiErrorMessage } from '../api/client';
 
@@ -50,13 +50,6 @@ export function LoginModal({
         onSubmit={form.onSubmit((values) => loginMutation.mutate(values))}
       >
         <Stack>
-          <Alert
-            variant="light"
-            color="teal"
-            icon={<IconInfoCircle size={18} />}
-          >
-            데모 계정은 admin / password123 입니다.
-          </Alert>
           <TextInput
             label="아이디"
             placeholder="아이디"
