@@ -1,6 +1,6 @@
 import axios, { AxiosError } from 'axios';
 
-const defaultApiBaseUrl = `${window.location.protocol}//${window.location.hostname}:8000`;
+const defaultApiBaseUrl = window.location.origin;
 
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || defaultApiBaseUrl,

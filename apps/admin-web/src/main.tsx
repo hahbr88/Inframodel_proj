@@ -33,7 +33,7 @@ createRoot(document.getElementById('root')!).render(
         })}
       >
         <Notifications position="top-right" />
-        <BrowserRouter>
+        <BrowserRouter basename="/admin">
           <AdminAuthProvider>
             <App />
           </AdminAuthProvider>

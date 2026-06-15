@@ -21,7 +21,7 @@ Command와 Query는 각자의 라우터와 서비스, 스키마를 사용합니�
 ## 현재 권장 실행: Mock 모드
 
 ```bash
-cd integrated-was
+cd apps/integrated-was
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
