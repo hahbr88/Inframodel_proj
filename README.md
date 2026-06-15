@@ -18,6 +18,7 @@ sudo apt install git -y
 ```
 
 설치확인
+
 ```bash
 git --version
 ```
@@ -225,7 +226,31 @@ Squash and merge
 
 ### 문서 버젼 관리
 
-|작성일|작성자|버젼|
-|---|--|-|
-|20260608|하병노|1.0|
-|20260609|하병노|1.01|
+| 작성일   | 작성자 | 버젼 |
+| -------- | ------ | ---- |
+| 20260608 | 하병노 | 1.0  |
+| 20260609 | 하병노 | 1.01 |
+
+---
+
+# Legacy On-Premise Infrastructure
+
+레거시 3-Tier 기반 온프레미스 인프라 구축 및 운영 문서입니다.
+
+## 운영 관리대장
+
+- [Legacy Infrastructure Management](docs/legacy-onpremise/legacy-infra-management.xlsx)
+
+## 구축 문서
+
+- [01 VMware 환경 구성](docs/legacy-onpremise/01-vmware-installation.md)
+- [02 네트워크 구성](docs/legacy-onpremise/02-network-configuration.md)
+- [03 운영 서버 구축](docs/legacy-onpremise/03-ops-server-build.md)
+- [04 웹 서버 구축](docs/legacy-onpremise/04-web-server-build.md)
+- [05 WAS 서버 구축](docs/legacy-onpremise/05-was-server-build.md)
+- [06 DB 서버 구축](docs/legacy-onpremise/06-db-server-build.md)
+- [07 DNS 서버 구축](docs/legacy-onpremise/07-dns-server-build.md)
+- [08 NTP 서버 구축](docs/legacy-onpremise/08-ntp-server-build.md)
+- [09 DB 백업 구성](docs/legacy-onpremise/09-database-backup.md)
+- [10 VPN 서버 구축](docs/legacy-onpremise/10-vpn-server-build.md)
+- [11 최종 검증](docs/legacy-onpremise/11-system-validation.md)
