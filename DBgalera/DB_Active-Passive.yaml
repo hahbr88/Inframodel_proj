@@ -1,0 +1,133 @@
+# ==============================================================================
+# [PROJECT RUNBOOK] Node.js WAS-Aligned Active-Passive Galera Cluster
+# Topology: 1 WAS (Node.js) + 1 Active DB (Write/Read) + 1 Passive DB (Read-Only) + 1 Garbd
+# Subnet: 10.70.3.0/24
+# ==============================================================================
+
+version: '3.8'
+
+networks:
+  enterprise_vpc:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.70.3.0/24
+
+volumes:
+  enterprise_data_vol:
+    driver: local
+  enterprise_backup_vol:
+    driver: local
+
+services:
+  # ----------------------------------------------------------------------------
+  # [WEB/WAS] Node.js 22 Application Server (totalwas)
+  # ----------------------------------------------------------------------------
+  totalwas:
+    image: node:22-alpine
+    container_name: totalwas
+    restart: always
+    tty: true
+    environment:
+      NODE_ENV: production
+      DB_WRITE_HOST: 10.70.3.30
+      DB_READ_HOST: 10.70.3.40
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: "root_password_here"
+      DB_NAME: "stage1_db"
+    command: sh -c "npm install && node index.js" # 실제 구동 명령어로 변경 가능
+    ports:
+      - "8080:8080" # WAS 포트 외부 노출
+    networks:
+      enterprise_vpc:
+        ipv4_address: 10.70.3.20
+    depends_on:
+      - Data
+      - Backup
+
+  # ----------------------------------------------------------------------------
+  # [Active DB] Main Write/Read Master Node (Data)
+  # ----------------------------------------------------------------------------
+  Data:
+    image: mariadb:10.11
+    container_name: db_data
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    environment:
+      MARIADB_ROOT_PASSWORD: "root_password_here"
+      MARIADB_DATABASE: "stage1_db"
+    command: >
+      --wsrep-new-cluster
+      --wsrep-on=ON
+      --wsrep-cluster-name=enterprise_cluster
+      --wsrep-cluster-address=gcomm://10.70.3.30,10.70.3.40,10.70.3.20
+      --wsrep-node-name=Data
+      --wsrep-node-address=10.70.3.30
+      --wsrep-sst-method=mariabackup
+      --binlog-format=ROW
+      --innodb-autoinc-lock-mode=2
+      --bind-address=0.0.0.0
+    ports:
+      - "3306:3306"
+    networks:
+      enterprise_vpc:
+        ipv4_address: 10.70.3.30
+    volumes:
+      - enterprise_data_vol:/var/lib/mysql
+
+  # ----------------------------------------------------------------------------
+  # [Passive DB] Read-Only Replication Node (Backup)
+  # ----------------------------------------------------------------------------
+  Backup:
+    image: mariadb:10.11
+    container_name: db_backup
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+      - Data
+    environment:
+      MARIADB_ROOT_PASSWORD: "root_password_here"
+    command: >
+      --wsrep-on=ON
+      --wsrep-cluster-name=enterprise_cluster
+      --wsrep-cluster-address=gcomm://10.70.3.30,10.70.3.40,10.70.3.20
+      --wsrep-node-name=Backup
+      --wsrep-node-address=10.70.3.40
+      --wsrep-sst-method=mariabackup
+      --binlog-format=ROW
+      --innodb-autoinc-lock-mode=2
+      --bind-address=0.0.0.0
+      --read-only=ON
+    ports:
+      - "3307:3306" # 포트 충돌 방지용 외부 3307 매핑
+    networks:
+      enterprise_vpc:
+        ipv4_address: 10.70.3.40
+    volumes:
+      - enterprise_backup_vol:/var/lib/mysql
+
+  # ----------------------------------------------------------------------------
+  # [ARBITRATOR] Galera Arbitrator Daemon (Garbd - Hosted on WAS Network)
+  # ----------------------------------------------------------------------------
+  garbd:
+    image: severalnines/galera-arbitrator:latest
+    container_name: db_garbd
+    restart: always
+    depends_on:
+      - Data
+      - Backup
+    environment:
+      GARBD_ADDRESS: "gcomm://10.70.3.30:4567,10.70.3.40:4567"
+      GARBD_GROUP: "enterprise_cluster"
+    networks:
+      enterprise_vpc:
+        ipv4_address: 10.70.3.50 # 중재자 전용 고정 IP 할당
