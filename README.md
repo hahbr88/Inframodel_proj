@@ -254,3 +254,14 @@ Squash and merge
 - [09 DB 백업 구성](docs/legacy-onpremise/09-database-backup.md)
 - [10 VPN 서버 구축](docs/legacy-onpremise/10-vpn-server-build.md)
 - [11 최종 검증](docs/legacy-onpremise/11-system-validation.md)
+
+---
+
+## 문서 정보
+
+| 항목   | 내용                                      |
+| ------ | ----------------------------------------- |
+| 문서명 | 레거시 온프레미스 인프라 표준 구축 가이드 |
+| 작성자 | 김수현                                    |
+| 작성일 | 2026-06-15                                |
+| 버전   | v1.0                                      |
