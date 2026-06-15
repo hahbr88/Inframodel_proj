@@ -1,5 +1,10 @@
 # VM별 Docker Compose 배포
 
+상세 구축 절차와 검증 결과:
+
+- [Docker Compose 3-Tier 구축 가이드](../docs/docker-compose-3tier/01-deployment-guide.md)
+- [Docker Compose 3-Tier 검증 결과](../docs/docker-compose-3tier/02-validation-result.md)
+
 Ubuntu 24.04 VM 세 대를 다음 두 단계로 구성합니다.
 
 1. `init-vm.sh`: OS, 네트워크, Docker, UFW 구성
@@ -55,15 +60,16 @@ sudo ROLE=web \
 
 ## 2단계: 저장소 준비
 
-각 VM에서 저장소를 얕게 clone합니다.
+각 VM에서 저장소를 clone합니다.
 
 ```bash
-git clone --depth 1 https://github.com/hahbr88/Inframodel_proj.git
+git clone https://github.com/hahbr88/Inframodel_proj.git
 cd Inframodel_proj
 ```
 
 Git에는 `node_modules`, `.venv`, 빌드 결과물이 포함되지 않으므로 로컬 작업
-디렉터리 전체 크기가 그대로 clone되는 것은 아닙니다.
+디렉터리 전체 크기가 그대로 clone되는 것은 아닙니다. 운영 배포 전용 서버에서
+Git 이력이 필요 없을 때만 선택적으로 `--depth 1`을 사용합니다.
 
 ## 3단계: 역할별 배포
 
@@ -80,9 +86,9 @@ DB_ROOT_PASSWORD='root-pass-1234' \
 ```bash
 # was-vm
 DB_PASSWORD='app-pass-1234' \
-JWT_SECRET='local-jwt-secret-1234567890abcdef' \
+JWT_SECRET='replace-with-random-secret-32-chars' \
 ADMIN_PASSWORD='admin-pass-1234' \
-KMA_SERVICE_KEY='공공데이터포털-Decoding-인증키' \
+KMA_SERVICE_KEY='<공공데이터포털 Decoding 인증키>' \
 ./deploy/was/deploy.sh
 ```
 
@@ -98,10 +104,18 @@ WEB_IP=192.168.200.10 \
 WAS_IP=192.168.200.20 \
 DB_IP=192.168.200.30 \
 DB_PASSWORD='app-pass-1234' \
-JWT_SECRET='local-jwt-secret-1234567890abcdef' \
+JWT_SECRET='replace-with-random-secret-32-chars' \
 ADMIN_PASSWORD='admin-pass-1234' \
 ./deploy/was/deploy.sh
 ```
+
+예시 비밀번호와 JWT는 실제 배포 전에 변경합니다. 허용 문자는 영문, 숫자,
+`.`, `_`, `~`, `-`이며 JWT는 32자 이상이어야 합니다. 역할별 `deploy.sh`는
+실행할 때마다 같은 디렉터리의 `.env`를 전달값으로 다시 생성합니다.
+
+MariaDB 비밀번호 환경변수는 데이터 볼륨을 처음 생성할 때만 DB 사용자 생성에
+사용됩니다. 기존 `mariadb-data` 볼륨에서 비밀번호를 바꾸려면 MariaDB 계정의
+비밀번호도 별도로 변경해야 합니다.
 
 접속 경로:
 
