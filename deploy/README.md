@@ -82,6 +82,7 @@ DB_ROOT_PASSWORD='root-pass-1234' \
 DB_PASSWORD='app-pass-1234' \
 JWT_SECRET='local-jwt-secret-1234567890abcdef' \
 ADMIN_PASSWORD='admin-pass-1234' \
+KMA_SERVICE_KEY='공공데이터포털-Decoding-인증키' \
 ./deploy/was/deploy.sh
 ```
 
@@ -107,6 +108,41 @@ ADMIN_PASSWORD='admin-pass-1234' \
 - 사용자 웹: `http://WEB_VM_IP/`
 - 관리자 웹: `http://WEB_VM_IP/admin/`
 - API 프록시: `http://WEB_VM_IP/api/`
+
+## 날씨 수집
+
+WAS 배포 시 공공데이터포털에서 발급받은 Decoding 인증키를
+`KMA_SERVICE_KEY`로 전달합니다. 최초에는 전체 코스 대신 일부만 수집해
+연결과 인증키를 확인할 수 있습니다.
+
+```bash
+KMA_COURSE_LIMIT=3 \
+./deploy/was/collect-weather.sh
+```
+
+정상 확인 후 전체 코스를 한 번 수집합니다.
+
+```bash
+./deploy/was/collect-weather.sh
+```
+
+수집 결과는 DB의 `weather_snapshots`, `weather_forecasts`,
+`climate_indices` 테이블에 저장됩니다.
+
+기상청 발표 시각 10분 후에 자동 수집하도록 cron을 등록합니다.
+
+```bash
+sudo apt-get install -y cron
+sudo systemctl enable --now cron
+./deploy/was/install-weather-cron.sh
+```
+
+등록 확인과 로그 확인:
+
+```bash
+crontab -l
+tail -f deploy/was/kma-collector.log
+```
 
 Docker의 published port는 일부 환경에서 UFW 규칙보다 먼저 처리될 수 있습니다.
 VMware NAT와 호스트 방화벽에서도 외부 접근을 제한해야 합니다.

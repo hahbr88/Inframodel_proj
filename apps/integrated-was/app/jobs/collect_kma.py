@@ -227,7 +227,7 @@ async def collect_snapshot() -> str:
     city_area_ids = sorted(
         {
             course.city_area_id
-            for course in mock_store.courses.values()
+            for course in courses
             if course.city_area_id
         }
     )

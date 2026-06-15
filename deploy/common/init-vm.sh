@@ -150,12 +150,14 @@ install_common_packages() {
 
   apt-get install -y \
     ca-certificates \
+    cron \
     curl \
     git \
     openssh-server \
     ufw
 
   timedatectl set-timezone Asia/Seoul
+  systemctl enable --now cron
   systemctl enable --now ssh
 }
 
