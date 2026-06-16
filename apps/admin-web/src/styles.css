@@ -1,0 +1,57 @@
+:root {
+  color: #1d2530;
+  background: #f4f6fa;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 85% 5%, rgba(76, 110, 245, 0.08), transparent 24rem),
+    #f4f6fa;
+}
+
+.login-page {
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.login-panel {
+  width: min(440px, 100%);
+  border: 1px solid rgba(36, 48, 70, 0.08);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 24px 70px rgba(28, 39, 62, 0.12);
+}
+
+.stat-card,
+.content-panel {
+  border: 1px solid rgba(36, 48, 70, 0.08);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 8px 28px rgba(28, 39, 62, 0.05);
+}
+
+.table-panel {
+  overflow: hidden;
+}
+
+.dashboard-row {
+  padding: 12px 0;
+  border-bottom: 1px solid #edf0f5;
+}
+
+.dashboard-row:last-child {
+  border-bottom: 0;
+}
+
+@media (max-width: 48em) {
+  .mantine-AppShell-main {
+    padding: 18px;
+  }
+}

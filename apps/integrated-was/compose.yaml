@@ -1,0 +1,89 @@
+services:
+  was:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      APP_NAME: ${APP_NAME:-Integrated Weather & Course WAS}
+      ENVIRONMENT: ${ENVIRONMENT:-local}
+      DATA_MODE: ${DATA_MODE:-mock}
+      WEATHER_MODE: ${WEATHER_MODE:-mock}
+      WEATHER_STORAGE: ${WEATHER_STORAGE:-json}
+      WEATHER_DATABASE_BATCH_SIZE: ${WEATHER_DATABASE_BATCH_SIZE:-1000}
+      WEATHER_SNAPSHOT_RETENTION: ${WEATHER_SNAPSHOT_RETENTION:-3}
+      WRITE_DATABASE_URL: ${WRITE_DATABASE_URL:-sqlite+aiosqlite:////app/data/integrated_was.db}
+      READ_DATABASE_URL: ${READ_DATABASE_URL:-sqlite+aiosqlite:////app/data/integrated_was.db}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      JWT_SECRET: ${JWT_SECRET:-change-this-secret-in-production}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-password123}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174}
+      CORS_ORIGIN_REGEX: ${CORS_ORIGIN_REGEX:-^https?://(localhost|127\.0\.0\.1|10(\.[0-9]{1,3}){3}|192\.168(\.[0-9]{1,3}){2}|172\.(1[6-9]|2[0-9]|3[01])(\.[0-9]{1,3}){2}):(5173|5174)$}
+      KMA_SERVICE_KEY: ${KMA_SERVICE_KEY:-}
+      KMA_SNAPSHOT_PATH: /app/data/kma_snapshot.json
+      KMA_COLLECTION_CONCURRENCY: ${KMA_COLLECTION_CONCURRENCY:-10}
+      KMA_COURSE_LIMIT: ${KMA_COURSE_LIMIT:-0}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    volumes:
+      - was-data:/app/data
+    networks:
+      - was-net
+
+  kma-collector:
+    build: .
+    profiles: ["collector"]
+    command: python -m app.jobs.collect_kma
+    environment:
+      KMA_SERVICE_KEY: ${KMA_SERVICE_KEY:-}
+      WEATHER_STORAGE: ${WEATHER_STORAGE:-json}
+      WEATHER_DATABASE_BATCH_SIZE: ${WEATHER_DATABASE_BATCH_SIZE:-1000}
+      WEATHER_SNAPSHOT_RETENTION: ${WEATHER_SNAPSHOT_RETENTION:-3}
+      WRITE_DATABASE_URL: ${WRITE_DATABASE_URL:-sqlite+aiosqlite:////app/data/integrated_was.db}
+      READ_DATABASE_URL: ${READ_DATABASE_URL:-sqlite+aiosqlite:////app/data/integrated_was.db}
+      KMA_SNAPSHOT_PATH: /app/data/kma_snapshot.json
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    volumes:
+      - was-data:/app/data
+    networks:
+      - was-net
+
+  mariadb:
+    image: mariadb:11.4
+    profiles: ["database"]
+    environment:
+      MARIADB_DATABASE: ${MARIADB_DATABASE:-integrated}
+      MARIADB_USER: ${MARIADB_USER:-app}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD:-app-password}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:-root-password}
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - was-net
+
+  redis:
+    image: redis:7.4-alpine
+    profiles: ["database"]
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - was-net
+
+volumes:
+  was-data:
+  mariadb-data:
+  redis-data:
+
+networks:
+  was-net:
+    driver: bridge
