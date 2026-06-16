@@ -3,16 +3,16 @@ set -euo pipefail
 
 HTTP_BIND_IP="${HTTP_BIND_IP:-0.0.0.0}"
 HTTP_PORT="${HTTP_PORT:-80}"
-DB_HOST="${DB_HOST:-192.168.100.30}"
+DB_HOST="${DB_HOST:-10.250.10.10}"
 DB_PORT="${DB_PORT:-3306}"
 DB_NAME="${DB_NAME:-integrated}"
 DB_USER="${DB_USER:-app}"
-DB_PASSWORD="${DB_PASSWORD:-}"
-JWT_SECRET="${JWT_SECRET:-}"
+DB_PASSWORD="${DB_PASSWORD:-1234}"
+JWT_SECRET="${JWT_SECRET:-my_super_secret_key_string_32chars_long}"
 ADMIN_USERNAME="${ADMIN_USERNAME:-admin}"
-ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
-PUBLIC_ORIGIN="${PUBLIC_ORIGIN:-}"
-CORS_ORIGINS="${CORS_ORIGINS:-}"
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-1234}"
+PUBLIC_ORIGIN="${PUBLIC_ORIGIN:-http://tripkey.shop}"
+CORS_ORIGINS="${CORS_ORIGINS:-http://tripkey.shop}"
 CORS_ORIGIN_REGEX="${CORS_ORIGIN_REGEX:-}"
 COOKIE_SECURE="${COOKIE_SECURE:-false}"
 KMA_SERVICE_KEY="${KMA_SERVICE_KEY:-}"
@@ -40,7 +40,7 @@ first_host_ip() {
   || fail "apps/integrated-was 소스를 찾지 못했습니다."
 command -v docker >/dev/null || fail "Docker가 설치되어 있지 않습니다."
 
-[[ $DB_PASSWORD =~ ^[A-Za-z0-9._~-]+$ ]] \
+[[ $DB_PASSWORD =~ ^[-A-Za-z0-9._~-]+$ ]] \
   || fail "DB_PASSWORD를 영문, 숫자, 점, 밑줄, 물결표, 하이픈으로 지정하세요."
 [[ ${#JWT_SECRET} -ge 32 && $JWT_SECRET =~ ^[A-Za-z0-9._~-]+$ ]] \
   || fail "JWT_SECRET을 32자 이상의 안전한 문자열로 지정하세요."
