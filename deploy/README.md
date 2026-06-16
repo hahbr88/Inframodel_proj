@@ -5,6 +5,7 @@
 - [Docker Compose 배포 가이드](../docs/docker-compose-3tier/01-deployment-guide.md)
 - [Docker Compose 배포 검증 결과](../docs/docker-compose-3tier/02-validation-result.md)
 - [Docker 이미지 경량화 전략](../docs/docker-compose-3tier/03-image-optimization.md)
+- [AWS EC2/ECR/CloudFront/Route 53 배포 검증](aws/README.md)
 
 현재 기본 배포 구조는 VM/EC2 두 대입니다.
 
