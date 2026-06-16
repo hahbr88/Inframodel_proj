@@ -8,7 +8,7 @@
 - [VMware 검증 결과](docs/docker-compose-3tier/02-validation-result.md)
 - [이미지 경량화 전략](docs/docker-compose-3tier/03-image-optimization.md)
 - [빠른 배포 명령](deploy/README.md)
-- [AWS EC2/ECR/Route 53 배포 검증](deploy/aws/README.md)
+- [AWS EC2/ECR/CloudFront/Route 53 배포 검증](deploy/aws/README.md)
 
 ## VScode 다운로드 및 환경설정
 

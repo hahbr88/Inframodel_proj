@@ -1,18 +1,19 @@
-# AWS EC2/ECR/Route 53 배포 검증
+# AWS EC2/ECR/CloudFront/Route 53 배포 검증
 
 이 디렉터리는 VMware에서 검증한 Docker Compose 구조를 AWS에서도 실행 가능한지
 확인하기 위한 배포 산출물이다.
 
-AWS 단계에서는 App EC2와 DB EC2를 분리한다. App EC2는 Public Subnet에서 외부
-HTTP 요청을 받고, DB EC2는 Private Subnet에서 App EC2의 요청만 받는다.
+AWS 단계에서는 App EC2와 DB EC2를 분리한다. App EC2는 Public Subnet에서
+CloudFront의 origin 역할을 하고, DB EC2는 Private Subnet에서 App EC2의 요청만
+받는다. 외부 HTTPS 접속은 CloudFront와 ACM 인증서로 처리한다.
 
 ## 1. 목표 구조
 
 ```text
 Route 53
-  -> Elastic IP
+  -> CloudFront + ACM
   -> Public Subnet
-     -> App EC2:80
+     -> App EC2 origin:80
         -> gateway
            /        -> service-web
            /admin/  -> admin-web
@@ -43,18 +44,22 @@ Private Subnet
 
 | 리소스 | 위치 | 외부 접근 |
 |---|---|---|
-| App EC2 | Public Subnet | HTTP 80, SSH 22 제한 허용 |
+| App EC2 | Public Subnet | CloudFront origin 요청, SSH 22 제한 허용 |
 | DB EC2 | Private Subnet | Public IP 없음 |
 
 Security Group 예시:
 
 | 대상 | Inbound |
 |---|---|
-| App EC2 SG | `80/tcp` from `0.0.0.0/0`, `22/tcp` from 관리자 IP |
+| App EC2 SG | `80/tcp` from CloudFront origin-facing prefix list, `22/tcp` from 관리자 IP |
 | DB EC2 SG | `3306/tcp` from App EC2 Security Group |
 
 DB EC2는 인터넷에서 직접 접속하지 않는다. App EC2의 WAS 컨테이너만 DB EC2의
 private IP로 MariaDB에 접근한다.
+
+초기 검증 중 CloudFront prefix list 제한을 바로 적용하기 어렵다면 App EC2의
+`80/tcp`를 임시로 `0.0.0.0/0`에 열 수 있다. 최종 발표에서는 운영 권장 구조로
+CloudFront origin-facing prefix list 또는 제한된 접근 제어를 설명한다.
 
 Private Subnet의 DB EC2가 Docker Hub에서 `mariadb:11.4` 이미지를 Pull하려면 NAT
 Gateway, NAT Instance, 또는 사전 이미지 준비 방식이 필요하다. 비용을 줄이는
@@ -180,6 +185,7 @@ cp .env.example .env
 - `JWT_SECRET`
 - `ADMIN_PASSWORD`
 - `CORS_ORIGINS`
+- `COOKIE_SECURE`
 - `KMA_SERVICE_KEY`
 
 DB URL 예시:
@@ -187,6 +193,13 @@ DB URL 예시:
 ```dotenv
 WRITE_DATABASE_URL=mysql+asyncmy://app:<DB_PASSWORD>@10.0.20.10:3306/integrated
 READ_DATABASE_URL=mysql+asyncmy://app:<DB_PASSWORD>@10.0.20.10:3306/integrated
+```
+
+CloudFront와 ACM으로 HTTPS 도메인을 사용할 경우 다음처럼 설정한다.
+
+```dotenv
+CORS_ORIGINS=https://www.example.com
+COOKIE_SECURE=true
 ```
 
 ECR 로그인:
@@ -214,21 +227,42 @@ curl -I http://127.0.0.1/admin/
 curl -s http://127.0.0.1/api/course-catalog | head
 ```
 
-## 9. Route 53 검증
+## 9. CloudFront, ACM, Route 53 검증
 
-Elastic IP를 App EC2에 연결한 뒤 Route 53에서 A 레코드를 생성한다.
+CloudFront를 외부 HTTPS 진입점으로 사용한다. App EC2는 CloudFront origin으로
+동작하고, 사용자는 Route 53 도메인으로 CloudFront에 접속한다.
+
+ACM 인증서 주의사항:
+
+- CloudFront에 연결할 ACM 인증서는 `us-east-1` 리전에서 발급한다.
+- Route 53 DNS 검증을 사용하면 인증서 검증 레코드를 쉽게 추가할 수 있다.
+
+CloudFront 설정 기준:
+
+| 항목 | 값 |
+|---|---|
+| Origin domain | App EC2 Public DNS 또는 Elastic IP 기반 도메인 |
+| Origin protocol | HTTP |
+| Viewer protocol policy | Redirect HTTP to HTTPS |
+| Alternate domain name | 실제 서비스 도메인 |
+| Custom SSL certificate | `us-east-1` ACM 인증서 |
+
+Route 53에서는 App EC2가 아니라 CloudFront 배포로 Alias 레코드를 연결한다.
 
 ```text
-도메인 A 레코드 -> App EC2 Elastic IP
+도메인 A/AAAA Alias -> CloudFront Distribution
 ```
 
 검증:
 
 ```bash
 nslookup <도메인>
-curl -I http://<도메인>/
-curl -s http://<도메인>/api/course-catalog | head
+curl -I https://<도메인>/
+curl -s https://<도메인>/api/course-catalog | head
 ```
+
+발표에서는 “HTTPS 인증서는 ACM으로 관리하고, CloudFront가 외부 HTTPS 요청을
+받아 App EC2 origin으로 전달한다”고 설명한다.
 
 ## 10. 롤백 전략
 
