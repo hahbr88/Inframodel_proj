@@ -2,13 +2,13 @@
 
 ## 개요
 
-본 문서는 레거시 온프레미스 환경의 데이터베이스 서버(legacy-db-01) 구축 절차를 정의한다.
+본 문서는 레거시 온프레미스 환경의 데이터베이스 서버(`legacy-db-01`) 구축 절차를 정의한다.
 
 데이터베이스 서버는 서비스 데이터를 저장하고 관리하는 역할을 수행한다.
 
-본 환경에서는 MariaDB를 사용하며, 애플리케이션 서버(legacy-app-01)와 연동하여 서비스를 제공한다.
+본 환경에서는 MariaDB를 사용하며 애플리케이션 서버(`legacy-app-01`)와 연동하여 서비스를 제공한다.
 
-데이터베이스 백업 구성은 별도 문서(09-db-backup.md)에서 진행한다.
+데이터베이스 백업은 `09 Database Backup` 문서에서 진행한다.
 
 ---
 
@@ -23,34 +23,80 @@
 | Memory  | 4 GB                      |
 | Storage | 60 GB                     |
 | IP 주소   | 192.168.100.30/24         |
+| DB Port | 3306                      |
+
+---
+
+# 관리자 계정
+
+| 항목       | 값         |
+| -------- | --------- |
+| Username | admin     |
+| Password | admin1234 |
+
+---
+
+# 사전 조건
+
+```text
+01 VMware Installation
+02 Network Configuration
+05 WAS Server Build
+```
+
+완료 상태여야 한다.
 
 ---
 
 # 서버 상태 확인
 
-서버 정보를 확인한다.
+```bash
+whoami
+```
+
+예상 결과
+
+```text
+admin
+```
 
 ```bash
 hostnamectl
 ```
 
-IP 주소를 확인한다.
+예상 결과
+
+```text
+Static hostname: legacy-db-01
+```
 
 ```bash
 ip addr
+```
+
+예상 결과
+
+```text
+192.168.100.30/24
+```
+
+```bash
+lsb_release -a
+```
+
+예상 결과
+
+```text
+Ubuntu 24.04.4 LTS
 ```
 
 ---
 
 # 패키지 업데이트
 
-패키지 저장소 정보를 최신 상태로 갱신한다.
-
 ```bash
 sudo apt update
 ```
-
-패키지를 최신 상태로 업데이트한다.
 
 ```bash
 sudo apt upgrade -y
@@ -58,33 +104,54 @@ sudo apt upgrade -y
 
 ---
 
-# MariaDB 설치
+# 운영 도구 설치
 
-MariaDB를 설치한다.
+```bash
+sudo apt install -y \
+vim \
+curl \
+wget \
+net-tools \
+htop \
+tree \
+unzip
+```
+
+---
+
+# MariaDB 설치
 
 ```bash
 sudo apt install mariadb-server -y
 ```
 
-설치 완료 후 서비스 상태를 확인한다.
+버전 확인
+
+```bash
+mariadb --version
+```
+
+---
+
+# MariaDB 서비스 확인
 
 ```bash
 sudo systemctl status mariadb
 ```
 
-서비스가 active (running) 상태로 표시되어야 한다.
+예상 결과
 
----
+```text
+active (running)
+```
 
-# 자동 시작 확인
-
-서버 재부팅 시 자동 실행 여부를 확인한다.
+자동 시작 확인
 
 ```bash
 sudo systemctl is-enabled mariadb
 ```
 
-확인 결과는 아래와 같아야 한다.
+예상 결과
 
 ```text
 enabled
@@ -92,21 +159,38 @@ enabled
 
 ---
 
-# MariaDB 접속 확인
+# MariaDB 보안 설정
 
-MariaDB에 접속한다.
+```bash
+sudo mysql_secure_installation
+```
+
+설정
+
+```text
+Switch to unix_socket authentication?      Y
+Change the root password?                  Y
+Remove anonymous users?                    Y
+Disallow root login remotely?              Y
+Remove test database and access to it?     Y
+Reload privilege tables now?               Y
+```
+
+---
+
+# MariaDB 접속 확인
 
 ```bash
 sudo mysql
 ```
 
-버전을 확인한다.
+버전 확인
 
 ```sql
 SELECT VERSION();
 ```
 
-종료한다.
+종료
 
 ```sql
 EXIT;
@@ -114,174 +198,292 @@ EXIT;
 
 ---
 
-# 외부 접속 설정 확인
+# 외부 접속 설정
 
-애플리케이션 서버(legacy-app-01)가 데이터베이스 서버에 접속할 수 있어야 한다.
-
-현재 bind-address 설정을 확인한다.
+설정 백업
 
 ```bash
-sudo grep -R "bind-address" /etc/mysql/mariadb.conf.d/
+sudo cp \
+/etc/mysql/mariadb.conf.d/50-server.cnf \
+/etc/mysql/mariadb.conf.d/50-server.cnf.bak
 ```
 
-설정 파일을 확인한다.
+설정 수정
 
 ```bash
 sudo vi /etc/mysql/mariadb.conf.d/50-server.cnf
 ```
 
-애플리케이션 서버 연동이 가능하도록 설정되어 있는지 확인한다.
+수정
 
-설정 변경 후에는 서비스를 재시작한다.
+```text
+bind-address = 0.0.0.0
+```
+
+---
+
+# MariaDB 재시작
 
 ```bash
 sudo systemctl restart mariadb
+```
+
+```bash
+sudo systemctl status mariadb
 ```
 
 ---
 
 # 데이터베이스 생성
 
-프로젝트에서 사용할 데이터베이스를 생성한다.
+MariaDB 접속
 
-데이터베이스명은 프로젝트 산출물 기준으로 적용한다.
-
-```sql
-CREATE DATABASE <DB_NAME>;
+```bash
+sudo mysql
 ```
 
-생성된 데이터베이스를 확인한다.
+DB 생성
+
+```sql
+CREATE DATABASE integrated;
+```
+
+확인
 
 ```sql
 SHOW DATABASES;
+```
+
+예상 결과
+
+```text
+integrated
 ```
 
 ---
 
 # 서비스 계정 생성
 
-애플리케이션 서버와 데이터베이스 연동을 위한 전용 계정을 생성한다.
-
-전체 허용(%) 방식은 사용하지 않는다.
-
-애플리케이션 서버 IP만 허용한다.
-
 ```sql
-CREATE USER '<DB_USER>'@'192.168.100.20'
-IDENTIFIED BY '<DB_PASSWORD>';
+CREATE USER 'app'@'192.168.100.20'
+IDENTIFIED BY 'app-password';
 ```
-
-생성된 계정에 데이터베이스 권한을 부여한다.
 
 ```sql
 GRANT ALL PRIVILEGES
-ON <DB_NAME>.*
-TO '<DB_USER>'@'192.168.100.20';
+ON integrated.*
+TO 'app'@'192.168.100.20';
 ```
-
-권한을 적용한다.
 
 ```sql
 FLUSH PRIVILEGES;
 ```
 
-생성된 계정을 확인한다.
+확인
 
 ```sql
 SELECT User, Host
 FROM mysql.user;
 ```
 
----
+종료
 
-# 포트 확인
-
-MariaDB 서비스가 정상적으로 동작하는지 확인한다.
-
-```bash
-ss -tulpen | grep ':3306'
+```sql
+EXIT;
 ```
 
-3306 포트가 LISTEN 상태로 확인되어야 한다.
+---
+
+# 3306 포트 확인
+
+```bash
+sudo ss -tulnp | grep ':3306'
+```
+
+예상 결과
+
+```text
+0.0.0.0:3306
+```
 
 ---
 
-# 애플리케이션 서버 연동 확인
+# 방화벽 설정
 
-애플리케이션 서버에서 데이터베이스 서버 통신을 확인한다.
+현재 상태 확인
 
-애플리케이션 서버에서 실행한다.
+```bash
+sudo ufw status
+```
+
+MariaDB 포트 허용
+
+```bash
+sudo ufw allow from 192.168.100.20 to any port 3306 proto tcp
+```
+
+상태 확인
+
+```bash
+sudo ufw status
+```
+
+---
+
+# DB 서버 자체 로그인 검증
+
+```bash
+mariadb -u app -p
+```
+
+비밀번호
+
+```text
+app-password
+```
+
+종료
+
+```sql
+EXIT;
+```
+
+---
+
+# WAS 서버 접속
+
+```bash
+ssh admin@192.168.100.20
+```
+
+---
+
+# WAS → DB 통신 확인
 
 ```bash
 ping -c 4 192.168.100.30
 ```
 
-정상적으로 응답이 반환되어야 한다.
+정상 응답 확인
 
-필요 시 생성한 서비스 계정으로 DB 접속을 확인한다.
+---
+
+# WAS → DB 로그인 검증
+
+MariaDB Client 설치
 
 ```bash
-mysql -h 192.168.100.30 -u <DB_USER> -p
+sudo apt install mariadb-client -y
+```
+
+DB 접속
+
+```bash
+mariadb \
+-h 192.168.100.30 \
+-u app \
+-p
+```
+
+비밀번호
+
+```text
+app-password
+```
+
+로그인 성공 확인
+
+종료
+
+```sql
+EXIT;
 ```
 
 ---
 
-# 운영 구조
-
-서비스 요청은 아래 순서로 처리된다.
+# 서비스 구조 검증
 
 ```text
 Internet
-    │
-    ▼
+↓
 legacy-web-01
-    │
-    ▼
+192.168.100.10
+↓
 legacy-app-01
-    │
-    ▼
+192.168.100.20
+↓
 legacy-db-01
+192.168.100.30
 ```
 
-데이터베이스 서버는 애플리케이션 서버를 통해서만 접근한다.
+정상 동작 확인
 
 ---
 
-# 점검 항목
+# 재부팅 검증
 
-| 점검 항목              | 확인 |
-| ------------------ | -- |
-| 서버 접속 확인           | □  |
-| 서버명 확인             | □  |
-| IP 주소 확인           | □  |
-| MariaDB 설치 완료      | □  |
-| MariaDB 실행 확인      | □  |
-| 자동 시작 확인           | □  |
-| bind-address 설정 확인 | □  |
-| 데이터베이스 생성 완료       | □  |
-| 서비스 계정 생성 완료       | □  |
-| 권한 부여 완료           | □  |
-| 3306 포트 확인         | □  |
-| 애플리케이션 서버 연동 확인    | □  |
+```bash
+sudo reboot
+```
+
+재접속
+
+```bash
+ssh admin@192.168.100.30
+```
+
+상태 확인
+
+```bash
+sudo systemctl status mariadb
+```
+
+```bash
+sudo ss -tulnp | grep ':3306'
+```
+
+```bash
+sudo mysql -e "SHOW DATABASES;"
+```
+
+---
+
+# Snapshot 생성
+
+```text
+VM
+ └─ Snapshot
+      └─ Take Snapshot
+```
+
+```text
+Name
+06-DB-Complete
+```
 
 ---
 
 # 구축 완료 기준
 
-다음 항목을 모두 만족하면 데이터베이스 서버 구축이 완료된 것으로 판단한다.
-
+* admin 계정 로그인 가능
 * MariaDB 설치 완료
-* MariaDB 정상 실행
+* MariaDB 서비스 정상 동작
+* 자동 시작 확인
+* bind-address 설정 완료
 * 데이터베이스 생성 완료
 * 서비스 계정 생성 완료
 * 권한 부여 완료
 * 3306 포트 수신 확인
-* 애플리케이션 서버 연동 성공
+* 방화벽 설정 완료
+* WAS 서버 접속 성공
+* WAS → DB 로그인 성공
+* 재부팅 후 정상 동작
+* Snapshot 생성 완료
 
 ---
 
 # 다음 단계
 
-데이터베이스 서버 구축이 완료되면 아래 문서를 진행한다.
-
-* 07-dns-bind9.md
+```text
+07 DNS Server Build
+```
