@@ -1,6 +1,12 @@
 # Inframodel_proj
 
-이번 팀 프로젝트는 Linux 3-Tier 서비스를 Docker Compose 구조로 전환하고 AWS 배포 가능성을 검증하는 프로젝트입니다.
+이번 팀 프로젝트는 Linux 기반 웹/WAS/DB 서비스를 Docker Compose 구조로 전환하고 AWS 배포 가능성을 검증하는 프로젝트입니다.
+
+## Docker Compose 배포 문서
+
+- [구축 가이드](docs/docker-compose-3tier/01-deployment-guide.md)
+- [VMware 검증 결과](docs/docker-compose-3tier/02-validation-result.md)
+- [빠른 배포 명령](deploy/README.md)
 
 ## VScode 다운로드 및 환경설정
 
@@ -248,10 +254,10 @@ Squash and merge
 
 ---
 
-### 문서 버젼 관리
+### 문서 버전 관리
 
-| 작성일   | 작성자 | 버젼 |
-| -------- | ------ | ---- |
-| 20260608 | 하병노 | 1.0  |
+| 작성일 | 작성자 | 버전 |
+|---------|---------|---------|
+| 20260608 | 하병노 | 1.0 |
 | 20260609 | 하병노 | 1.01 |
 | 20260615 | 김수현 | 1.02 |
