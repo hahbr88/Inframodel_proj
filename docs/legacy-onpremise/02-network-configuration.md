@@ -2,154 +2,41 @@
 
 ## 개요
 
-본 문서는 레거시 온프레미스 환경의 네트워크 구성 기준을 정의한다.
+본 문서는 레거시 온프레미스 환경의 네트워크 구성 절차를 정의한다.
 
-모든 서버는 동일한 네트워크 대역에서 고정 IP를 사용한다.
+모든 서버는 VMware VMnet8(NAT) 환경에서 고정 IP를 사용한다.
 
-서버 간 통신은 서비스 역할에 따라 필요한 포트만 허용하는 것을 기준으로 한다.
-
----
-
-# 네트워크 기본 정보
-
-| 항목                   | 설정값           |
-| ---------------------- | ---------------- |
-| Network                | 192.168.100.0/24 |
-| Gateway                | 192.168.100.1    |
-| IP 방식                | Static IP        |
-| VMware Network Adapter | NAT (VMnet8)     |
+본 단계에서는 서버별 고정 IP 설정, Gateway 설정 및 서버 간 통신 검증을 수행한다.
 
 ---
 
-# 서버별 IP 구성
+# 네트워크 정보
 
-| 서버명        | 역할                    | IP 주소           |
-| ------------- | ----------------------- | ----------------- |
-| legacy-ops-01 | 운영 서버               | 192.168.100.5/24  |
-| legacy-web-01 | 웹 서버 / Reverse Proxy | 192.168.100.10/24 |
-| legacy-app-01 | 애플리케이션 서버       | 192.168.100.20/24 |
-| legacy-db-01  | 데이터베이스 서버       | 192.168.100.30/24 |
-
----
-
-# 서버별 역할
-
-## 운영 서버
-
-운영 서버는 인프라 운영을 위한 공통 서비스를 담당한다.
-
-관리자 원격 접속, 내부 도메인 이름 해석, 서버 시간 동기화 서비스를 제공한다.
-
-| 항목        | 내용                                  |
-| ----------- | ------------------------------------- |
-| 서버명      | legacy-ops-01                         |
-| IP 주소     | 192.168.100.5/24                      |
-| 주요 서비스 | OpenSSH, WireGuard VPN, BIND9, Chrony |
+| 항목           | 설정값                            |
+| -------------- | --------------------------------- |
+| Network        | 192.168.100.0/24                  |
+| Gateway        | 192.168.100.2                     |
+| VMware Network | VMnet8                            |
+| Network Type   | NAT                               |
+| DHCP Range     | 192.168.100.128 ~ 192.168.100.254 |
+| IP 방식        | Static IP                         |
 
 ---
 
-## 웹 서버
+# 관리자 계정
 
-웹 서버는 사용자 웹 접속 요청을 처리하는 서버이다.
+01 VMware Installation 문서에서 생성한 공통 관리자 계정을 사용한다.
 
-HTTP 및 HTTPS 요청을 수신하며 React 정적 파일을 제공한다.
-
-필요한 요청은 애플리케이션 서버로 전달한다.
-
-| 항목        | 내용              |
-| ----------- | ----------------- |
-| 서버명      | legacy-web-01     |
-| IP 주소     | 192.168.100.10/24 |
-| 주요 서비스 | Nginx, React      |
+| 항목     | 값        |
+| -------- | --------- |
+| Username | admin     |
+| Password | admin1234 |
 
 ---
 
-## 애플리케이션 서버
+# 서버별 IP 계획
 
-애플리케이션 서버는 웹 서버로부터 전달받은 요청을 처리한다.
-
-서비스 로직을 수행하고 필요한 경우 데이터베이스 서버와 통신한다.
-
-| 항목        | 내용              |
-| ----------- | ----------------- |
-| 서버명      | legacy-app-01     |
-| IP 주소     | 192.168.100.20/24 |
-| 주요 서비스 | FastAPI Service   |
-
----
-
-## 데이터베이스 서버
-
-데이터베이스 서버는 서비스 데이터를 저장하고 관리한다.
-
-애플리케이션 서버에서 요청한 데이터 조회 및 저장 작업을 처리한다.
-
-| 항목        | 내용              |
-| ----------- | ----------------- |
-| 서버명      | legacy-db-01      |
-| IP 주소     | 192.168.100.30/24 |
-| 주요 서비스 | MariaDB           |
-
----
-
-# 서버 간 통신 정책
-
-본 환경에서는 모든 서버 간 통신을 허용하는 방식이 아니라 서비스 흐름에 필요한 통신만 허용하는 것을 기준으로 한다.
-
-| 접근 주체     | 대상 서버     | 서비스           | 포트        | 목적                             |
-| ------------- | ------------- | ---------------- | ----------- | -------------------------------- |
-| Internet      | legacy-web-01 | Nginx HTTP/HTTPS | 80, 443/TCP | 외부 웹 접속 및 상태 확인 페이지 |
-| legacy-web-01 | legacy-app-01 | FastAPI          | 3000/TCP    | Web → WAS 요청 전달              |
-| legacy-app-01 | legacy-db-01  | MariaDB          | 3306/TCP    | WAS → DB 연결                    |
-| Remote User   | legacy-ops-01 | WireGuard VPN    | 51820/UDP   | 원격 접속                        |
-
----
-
-# 서비스 흐름
-
-서비스 요청은 아래 순서로 처리된다.
-
-```text
-Internet
-   |
-   | 80, 443/TCP
-   v
-legacy-web-01
-   |
-   | 3000/TCP
-   v
-legacy-app-01
-   |
-   | 3306/TCP
-   v
-legacy-db-01
-```
-
-운영 서버는 별도의 운영 관리 목적 서버로 사용한다.
-
-```text
-Remote User
-   |
-   | 51820/UDP
-   v
-legacy-ops-01
-```
-
----
-
-# 네트워크 설정 확인 명령어
-
-## IP 주소 확인
-
-각 서버에서 아래 명령어로 IP가 정상 적용되었는지 확인한다.
-
-```bash
-ip addr
-```
-
-확인 기준은 아래와 같다.
-
-| 서버명        | 확인할 IP         |
+| 서버명        | IP 주소           |
 | ------------- | ----------------- |
 | legacy-ops-01 | 192.168.100.5/24  |
 | legacy-web-01 | 192.168.100.10/24 |
@@ -158,39 +45,363 @@ ip addr
 
 ---
 
-## Gateway 확인
+# 작업 대상 서버 로그인
 
-각 서버에서 기본 Gateway가 정상 설정되었는지 확인한다.
+각 서버에 로그인한다.
+
+```text
+legacy-ops-01
+legacy-web-01
+legacy-app-01
+legacy-db-01
+```
+
+로그인 계정
+
+```text
+Username : admin
+Password : admin1234
+```
+
+현재 로그인 계정을 확인한다.
+
+```bash
+whoami
+```
+
+예상 결과
+
+```text
+admin
+```
+
+---
+
+# 현재 네트워크 인터페이스 확인
+
+각 서버에서 네트워크 인터페이스 이름을 확인한다.
+
+```bash
+ip addr
+```
+
+예시
+
+```text
+ens33
+```
+
+또는
+
+```text
+ens160
+```
+
+또는
+
+```text
+ens192
+```
+
+반드시 실제 확인된 인터페이스명을 기록한다.
+
+예시
+
+```text
+legacy-ops-01 : ens33
+legacy-web-01 : ens33
+legacy-app-01 : ens33
+legacy-db-01 : ens33
+```
+
+환경에 따라 인터페이스명이 다를 수 있다.
+
+---
+
+# Netplan 설정 파일 확인
+
+Netplan 설정 파일명을 확인한다.
+
+```bash
+ls /etc/netplan
+```
+
+예시
+
+```text
+50-cloud-init.yaml
+```
+
+또는
+
+```text
+00-installer-config.yaml
+```
+
+실제 확인된 파일명을 기록한다.
+
+예시
+
+```text
+50-cloud-init.yaml
+```
+
+이후 모든 명령어는 실제 확인된 파일명을 사용한다.
+
+---
+
+# Netplan 설정 파일 백업
+
+설정 변경 전 백업을 생성한다.
+
+예시
+
+```bash
+sudo cp \
+/etc/netplan/50-cloud-init.yaml \
+/etc/netplan/50-cloud-init.yaml.bak
+```
+
+파일명이 다른 경우 실제 파일명으로 변경한다.
+
+백업 파일을 확인한다.
+
+```bash
+ls -al /etc/netplan
+```
+
+---
+
+# legacy-ops-01 고정 IP 설정
+
+설정 파일을 수정한다.
+
+예시
+
+```bash
+sudo nano /etc/netplan/50-cloud-init.yaml
+```
+
+인터페이스명이 `ens33`인 경우 아래 내용을 입력한다.
+
+```yaml
+network:
+  version: 2
+  ethernets:
+    ens33:
+      dhcp4: false
+      addresses:
+        - 192.168.100.5/24
+      routes:
+        - to: default
+          via: 192.168.100.2
+      nameservers:
+        addresses:
+          - 8.8.8.8
+          - 1.1.1.1
+```
+
+주의
+
+```text
+ens33 부분은 실제 확인한 인터페이스명 사용
+```
+
+---
+
+# legacy-web-01 고정 IP 설정
+
+설정 파일을 수정한다.
+
+```bash
+sudo nano /etc/netplan/50-cloud-init.yaml
+```
+
+인터페이스명이 `ens33`인 경우 아래 내용을 입력한다.
+
+```yaml
+network:
+  version: 2
+  ethernets:
+    ens33:
+      dhcp4: false
+      addresses:
+        - 192.168.100.10/24
+      routes:
+        - to: default
+          via: 192.168.100.2
+      nameservers:
+        addresses:
+          - 8.8.8.8
+          - 1.1.1.1
+```
+
+---
+
+# legacy-app-01 고정 IP 설정
+
+설정 파일을 수정한다.
+
+```bash
+sudo nano /etc/netplan/50-cloud-init.yaml
+```
+
+인터페이스명이 `ens33`인 경우 아래 내용을 입력한다.
+
+```yaml
+network:
+  version: 2
+  ethernets:
+    ens33:
+      dhcp4: false
+      addresses:
+        - 192.168.100.20/24
+      routes:
+        - to: default
+          via: 192.168.100.2
+      nameservers:
+        addresses:
+          - 8.8.8.8
+          - 1.1.1.1
+```
+
+---
+
+# legacy-db-01 고정 IP 설정
+
+설정 파일을 수정한다.
+
+```bash
+sudo nano /etc/netplan/50-cloud-init.yaml
+```
+
+인터페이스명이 `ens33`인 경우 아래 내용을 입력한다.
+
+```yaml
+network:
+  version: 2
+  ethernets:
+    ens33:
+      dhcp4: false
+      addresses:
+        - 192.168.100.30/24
+      routes:
+        - to: default
+          via: 192.168.100.2
+      nameservers:
+        addresses:
+          - 8.8.8.8
+          - 1.1.1.1
+```
+
+---
+
+# 설정 저장
+
+Nano Editor 기준
+
+```text
+Ctrl + O
+Enter
+Ctrl + X
+```
+
+---
+
+# Netplan 설정 문법 확인
+
+설정 문법을 확인한다.
+
+```bash
+sudo netplan generate
+```
+
+오류가 없어야 한다.
+
+---
+
+# Netplan 적용
+
+설정을 적용한다.
+
+```bash
+sudo netplan apply
+```
+
+네트워크가 재시작된다.
+
+---
+
+# IP 주소 확인
+
+현재 IP를 확인한다.
+
+```bash
+ip addr
+```
+
+확인 기준
+
+| 서버명        | 확인 IP        |
+| ------------- | -------------- |
+| legacy-ops-01 | 192.168.100.5  |
+| legacy-web-01 | 192.168.100.10 |
+| legacy-app-01 | 192.168.100.20 |
+| legacy-db-01  | 192.168.100.30 |
+
+---
+
+# Gateway 확인
+
+라우팅 정보를 확인한다.
 
 ```bash
 ip route
 ```
 
-기본 Gateway는 아래 값으로 확인되어야 한다.
+예상 결과
 
 ```text
-default via 192.168.100.1
+default via 192.168.100.2
 ```
 
 ---
 
-## 서버 간 통신 확인
+# 인터넷 연결 확인
 
-운영 서버에서 각 서버로 Ping 테스트를 수행한다.
+외부 통신을 확인한다.
+
+```bash
+ping -c 4 8.8.8.8
+```
+
+정상적으로 응답해야 한다.
+
+---
+
+# DNS 이름 해석 확인
+
+도메인 이름 해석을 확인한다.
+
+```bash
+ping -c 4 google.com
+```
+
+정상적으로 응답해야 한다.
+
+---
+
+# 서버 간 통신 확인
+
+## legacy-ops-01
 
 ```bash
 ping -c 4 192.168.100.10
-ping -c 4 192.168.100.20
-ping -c 4 192.168.100.30
 ```
-
-웹 서버에서 애플리케이션 서버로 통신을 확인한다.
 
 ```bash
 ping -c 4 192.168.100.20
 ```
-
-애플리케이션 서버에서 데이터베이스 서버로 통신을 확인한다.
 
 ```bash
 ping -c 4 192.168.100.30
@@ -198,51 +409,102 @@ ping -c 4 192.168.100.30
 
 ---
 
-# 포트 확인 기준
-
-서비스 설치 후에는 각 서버에서 필요한 포트가 열려 있는지 확인한다.
-
-## 웹 서버 포트 확인
+## legacy-web-01
 
 ```bash
-ss -tulpen | grep -E ':80|:443'
+ping -c 4 192.168.100.20
 ```
 
-## 애플리케이션 서버 포트 확인
+---
+
+## legacy-app-01
 
 ```bash
-ss -tulpen | grep ':3000'
+ping -c 4 192.168.100.30
 ```
 
-## 데이터베이스 서버 포트 확인
+---
 
-```bash
-ss -tulpen | grep ':3306'
+# DHCP 충돌 확인
+
+현재 VMware DHCP 범위를 확인한다.
+
+```text
+192.168.100.128 ~ 192.168.100.254
 ```
 
-## 운영 서버 VPN 포트 확인
+현재 사용 중인 고정 IP는 아래 범위를 사용한다.
 
-```bash
-ss -tulpen | grep ':51820'
+```text
+192.168.100.5
+192.168.100.10
+192.168.100.20
+192.168.100.30
+```
+
+DHCP 범위 밖이므로 충돌하지 않는다.
+
+---
+
+# DNS 서버 변경 예정 안내
+
+현재는 외부 DNS를 사용한다.
+
+```text
+8.8.8.8
+1.1.1.1
+```
+
+07 DNS Server Build 완료 후 아래 DNS 서버로 변경한다.
+
+```text
+192.168.100.5
+```
+
+DNS 변경 작업은 07 DNS Server Build 문서에서 수행한다.
+
+---
+
+# Snapshot 생성
+
+네트워크 설정 완료 후 Snapshot을 생성한다.
+
+VMware 메뉴
+
+```text
+VM
+ └─ Snapshot
+      └─ Take Snapshot
+```
+
+설정
+
+```text
+Name
+02-Network-Complete
 ```
 
 ---
 
 # 구축 완료 기준
 
-다음 항목을 모두 만족하면 네트워크 구성이 완료된 것으로 판단한다.
+다음 항목을 모두 만족해야 한다.
 
-- 모든 서버가 192.168.100.0/24 대역의 고정 IP를 사용한다.
-- 모든 서버의 Gateway가 192.168.100.1로 설정되어 있다.
-- legacy-ops-01에서 다른 서버로 Ping 통신이 가능하다.
-- legacy-web-01에서 legacy-app-01로 통신이 가능하다.
-- legacy-app-01에서 legacy-db-01로 통신이 가능하다.
-- 서비스 설치 후 필요한 포트가 정상적으로 Listen 상태로 확인된다.
+- admin 계정 로그인 확인
+- 고정 IP 설정 완료
+- Gateway 설정 완료
+- Netplan 적용 완료
+- 서버별 IP 확인 완료
+- 인터넷 연결 확인 완료
+- DNS 이름 해석 확인 완료
+- 서버 간 Ping 통신 성공
+- DHCP 충돌 없음 확인
+- Snapshot 생성 완료
 
 ---
 
 # 다음 단계
 
-네트워크 구성 기준을 확인한 후 아래 문서를 진행한다.
-
-- 03-ops-server-build.md
+```text
+03-ops-server-build.md
+```

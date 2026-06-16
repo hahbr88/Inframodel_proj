@@ -2,13 +2,13 @@
 
 ## 개요
 
-본 문서는 레거시 온프레미스 환경의 웹 서버(legacy-web-01) 구축 절차를 정의한다.
+본 문서는 레거시 온프레미스 환경의 웹 서버(`legacy-web-01`) 구축 절차를 정의한다.
 
-웹 서버는 사용자의 웹 요청을 최초로 수신하는 서버이며 React 웹 서비스 제공 역할을 수행한다.
+웹 서버는 사용자의 HTTP 요청을 최초로 수신하는 서버이며 Nginx Reverse Proxy를 통해 애플리케이션 서버(`legacy-app-01`)로 요청을 전달한다.
 
-본 단계에서는 Nginx 설치 및 웹 서비스 동작 환경을 구성한다.
+본 문서에서는 Nginx 설치, 웹 서버 동작 확인, Reverse Proxy 설정까지 진행한다.
 
-애플리케이션 서버(FastAPI)와의 Reverse Proxy 구성은 WAS 서버 구축 완료 후 진행한다.
+실제 Reverse Proxy 연동 검증은 `05-was-server-build.md` 문서에서 수행한다.
 
 ---
 
@@ -26,18 +26,50 @@
 
 ---
 
+# 관리자 계정
+
+| 항목     | 값        |
+| -------- | --------- |
+| Username | admin     |
+| Password | admin1234 |
+
+---
+
+# 사전 조건
+
+```text
+01 VMware Installation
+02 Network Configuration
+```
+
+완료 상태여야 한다.
+
+---
+
 # 서버 상태 확인
 
-서버에 접속 후 서버 정보를 확인한다.
+현재 로그인 계정을 확인한다.
+
+```bash
+whoami
+```
+
+예상 결과
+
+```text
+admin
+```
+
+서버명을 확인한다.
 
 ```bash
 hostnamectl
 ```
 
-확인 결과 서버명이 아래와 같이 표시되어야 한다.
+예상 결과
 
 ```text
-legacy-web-01
+Static hostname: legacy-web-01
 ```
 
 IP 주소를 확인한다.
@@ -46,17 +78,25 @@ IP 주소를 확인한다.
 ip addr
 ```
 
+예상 결과
+
+```text
+192.168.100.10/24
+```
+
+운영체제 버전을 확인한다.
+
+```bash
+lsb_release -a
+```
+
 ---
 
 # 패키지 업데이트
 
-패키지 저장소 정보를 최신 상태로 갱신한다.
-
 ```bash
 sudo apt update
 ```
-
-설치된 패키지를 최신 상태로 업데이트한다.
 
 ```bash
 sudo apt upgrade -y
@@ -64,55 +104,120 @@ sudo apt upgrade -y
 
 ---
 
-# Nginx 설치
+# 운영 도구 설치
 
-웹 서비스를 제공하기 위해 Nginx를 설치한다.
+```bash
+sudo apt install -y \
+vim \
+curl \
+wget \
+net-tools \
+htop \
+tree \
+unzip
+```
+
+---
+
+# Nginx 설치
 
 ```bash
 sudo apt install nginx -y
 ```
 
-설치 완료 후 서비스 상태를 확인한다.
+버전을 확인한다.
+
+```bash
+nginx -v
+```
+
+---
+
+# Nginx 서비스 확인
+
+```bash
+sudo systemctl start nginx
+```
+
+```bash
+sudo systemctl enable nginx
+```
 
 ```bash
 sudo systemctl status nginx
 ```
 
-서비스가 active (running) 상태로 표시되어야 한다.
-
----
-
-# Nginx 자동 시작 확인
-
-서버 재부팅 후에도 자동으로 실행되는지 확인한다.
-
-```bash
-sudo systemctl is-enabled nginx
-```
-
-확인 결과
+예상 결과
 
 ```text
-enabled
+active (running)
 ```
-
-로 표시되어야 한다.
 
 ---
 
-# 서비스 포트 확인
-
-Nginx가 정상적으로 포트를 수신하고 있는지 확인한다.
+# 80 포트 확인
 
 ```bash
-ss -tulpen | grep ':80'
+sudo ss -tulnp | grep ':80'
+```
+
+예상 결과
+
+```text
+0.0.0.0:80
 ```
 
 ---
 
-# 웹 서비스 확인
+# 방화벽 확인
 
-브라우저에서 아래 주소로 접속한다.
+현재 상태 확인
+
+```bash
+sudo ufw status
+```
+
+예상 결과
+
+```text
+Status: active
+```
+
+HTTP 허용
+
+```bash
+sudo ufw allow 80/tcp
+```
+
+HTTPS 허용
+
+```bash
+sudo ufw allow 443/tcp
+```
+
+확인
+
+```bash
+sudo ufw status
+```
+
+---
+
+# Nginx 기본 페이지 확인
+
+서버 내부
+
+```bash
+curl http://localhost
+```
+
+관리 PC
+
+```bash
+curl http://192.168.100.10
+```
+
+브라우저
 
 ```text
 http://192.168.100.10
@@ -122,71 +227,189 @@ Nginx 기본 페이지가 표시되어야 한다.
 
 ---
 
-# React 서비스 배포
+# 기본 웹 파일 백업
 
-React 서비스는 웹 서버에서 제공한다.
-
-React 프로젝트의 실제 배포 방식은 프로젝트 산출물 기준에 따라 진행한다.
-
-배포 완료 후 웹 브라우저에서 React 화면이 정상적으로 표시되어야 한다.
-
----
-
-# Reverse Proxy 구성 안내
-
-본 환경에서 웹 서버는 최종적으로 Reverse Proxy 역할을 수행한다.
-
-서비스 구조는 아래와 같다.
-
-```text
-Internet
-    │
-    ▼
-legacy-web-01
-(Nginx)
-    │
-    ▼
-legacy-app-01
-(FastAPI)
+```bash
+ls -al /var/www/html
 ```
 
-애플리케이션 서버 구축 완료 후 Nginx Reverse Proxy 설정을 진행한다.
-
-해당 설정 및 검증은 WAS 서버 구축 이후 단계에서 수행한다.
+```bash
+sudo cp \
+/var/www/html/index.nginx-debian.html \
+/var/www/html/index.nginx-debian.html.bak
+```
 
 ---
 
-# 점검 항목
+# Reverse Proxy 설정
 
-| 점검 항목                 | 확인 |
-| ------------------------- | ---- |
-| 서버 접속 확인            | □    |
-| 서버명 확인               | □    |
-| IP 주소 확인              | □    |
-| 패키지 업데이트 완료      | □    |
-| Nginx 설치 완료           | □    |
-| Nginx 서비스 실행         | □    |
-| Nginx 자동 시작 설정 확인 | □    |
-| 80 포트 수신 확인         | □    |
-| 웹 페이지 접속 확인       | □    |
+설정 파일 백업
+
+```bash
+sudo cp \
+/etc/nginx/sites-available/default \
+/etc/nginx/sites-available/default.bak
+```
+
+설정 수정
+
+```bash
+sudo vi /etc/nginx/sites-available/default
+```
+
+내용
+
+```nginx
+server {
+
+    listen 80;
+
+    server_name _;
+
+    location / {
+
+        proxy_pass http://192.168.100.20:8000;
+
+        proxy_set_header Host $host;
+
+        proxy_set_header X-Real-IP $remote_addr;
+
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+    }
+
+}
+```
+
+---
+
+# 설정 검증
+
+문법 확인
+
+```bash
+sudo nginx -t
+```
+
+예상 결과
+
+```text
+syntax is ok
+test is successful
+```
+
+설정 적용
+
+```bash
+sudo systemctl restart nginx
+```
+
+상태 확인
+
+```bash
+sudo systemctl status nginx
+```
+
+설정 확인
+
+```bash
+sudo cat /etc/nginx/sites-available/default
+```
+
+---
+
+# Reverse Proxy 검증 안내
+
+현재 단계에서는 WAS 서버가 아직 실행되지 않은 상태일 수 있다.
+
+```text
+192.168.100.20:8000
+```
+
+으로 연결이 되지 않으면 아래 오류가 발생할 수 있다.
+
+```text
+502 Bad Gateway
+```
+
+이는 정상이다.
+
+실제 Reverse Proxy 연동 검증은 `05-was-server-build.md` 문서에서 수행한다.
+
+---
+
+# SSH 접속 검증
+
+관리 PC에서 접속한다.
+
+```bash
+ssh admin@192.168.100.10
+```
+
+정상 로그인되어야 한다.
+
+---
+
+# 재부팅 검증
+
+```bash
+sudo reboot
+```
+
+재접속 후 확인
+
+```bash
+sudo systemctl status nginx
+```
+
+```bash
+sudo ss -tulnp | grep ':80'
+```
+
+```bash
+sudo nginx -t
+```
+
+---
+
+# Snapshot 생성
+
+VMware 메뉴
+
+```text
+VM
+ └─ Snapshot
+      └─ Take Snapshot
+```
+
+설정
+
+```text
+Name
+04-Web-Complete
+```
 
 ---
 
 # 구축 완료 기준
 
-다음 항목을 모두 만족하면 웹 서버 구축이 완료된 것으로 판단한다.
-
+- admin 계정 로그인 가능
 - Nginx 설치 완료
 - Nginx 서비스 정상 동작
-- Nginx 자동 시작 설정 확인
-- 웹 페이지 정상 접속
 - 80 포트 수신 확인
-- React 서비스 배포 준비 완료
+- HTTP 접속 가능
+- Reverse Proxy 설정 완료
+- Nginx 설정 검증 완료
+- SSH 접속 검증 완료
+- 재부팅 후 정상 동작
+- Snapshot 생성 완료
 
 ---
 
 # 다음 단계
 
-웹 서버 구축이 완료되면 아래 문서를 진행한다.
-
-- 05-was-server-build.md
+```text
+05 WAS Server Build
+```
