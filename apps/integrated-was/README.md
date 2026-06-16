@@ -24,7 +24,7 @@ Command와 Query는 각자의 라우터와 서비스, 스키마를 사용합니�
 cd apps/integrated-was
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 cp .env.example .env
 uvicorn main:app --reload
 ```
@@ -210,6 +210,7 @@ GET /api/course-catalog?limit=20&location=서울특별시&theme=문화/예술
 ## 테스트
 
 ```bash
+pip install -r requirements-dev.txt
 pytest -q
 ```
 
