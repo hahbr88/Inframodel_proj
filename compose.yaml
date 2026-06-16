@@ -22,7 +22,7 @@ services:
       # 초기 구동 시 자동 생성될 데이터베이스 이름 지정
       MARIADB_DATABASE: wordpress
     # 데이터 보존을 위한 저장소 연결
-    
+
     volumes:
       # 생성한 db-data 볼륨을 DB 실제 데이터 경로에 매핑
       - db-data:/var/lib/mysql
