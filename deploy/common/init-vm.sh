@@ -5,12 +5,14 @@ set -euo pipefail
 # Mac/Windows 호스트와 무관하게 Ubuntu VM 내부에서 실행합니다.
 #
 # 예:
+#   sudo ROLE=app APPLY_STATIC_IP=yes ./init-vm.sh
 #   sudo ROLE=web APPLY_STATIC_IP=yes ./init-vm.sh
 #   sudo ROLE=was APPLY_STATIC_IP=yes ./init-vm.sh
 #   sudo ROLE=db APPLY_STATIC_IP=yes ./init-vm.sh
 
 ROLE="${ROLE:-}"
 
+APP_IP="${APP_IP:-192.168.100.10}"
 WEB_IP="${WEB_IP:-192.168.100.10}"
 WAS_IP="${WAS_IP:-192.168.100.20}"
 DB_IP="${DB_IP:-192.168.100.30}"
@@ -25,17 +27,19 @@ DO_UPGRADE="${DO_UPGRADE:-no}"
 usage() {
   cat <<EOF
 사용법:
+  sudo ROLE=app [APPLY_STATIC_IP=yes] $0
   sudo ROLE=web [APPLY_STATIC_IP=yes] $0
   sudo ROLE=was [APPLY_STATIC_IP=yes] $0
   sudo ROLE=db  [APPLY_STATIC_IP=yes] $0
 
 기본 네트워크:
+  app-vm: $APP_IP
   web-vm: $WEB_IP
   was-vm: $WAS_IP
   db-vm : $DB_IP
   gateway: $GATEWAY
 
-호스트의 VMware NAT 대역이 다르면 WEB_IP, WAS_IP, DB_IP, GATEWAY를
+호스트의 VMware NAT 대역이 다르면 APP_IP, WEB_IP, WAS_IP, DB_IP, GATEWAY를
 실행 시 환경변수로 전달하세요.
 EOF
 }
@@ -50,6 +54,10 @@ fail() {
   || fail "root로 직접 로그인하지 말고 일반 사용자 계정에서 sudo를 사용하세요."
 
 case "$ROLE" in
+  app)
+    VM_HOSTNAME="${VM_HOSTNAME:-app-vm}"
+    STATIC_IP="${STATIC_IP:-$APP_IP}"
+    ;;
   web)
     VM_HOSTNAME="${VM_HOSTNAME:-web-vm}"
     STATIC_IP="${STATIC_IP:-$WEB_IP}"
@@ -80,12 +88,14 @@ configure_hostname() {
   hostnamectl set-hostname "$VM_HOSTNAME"
 
   sed -i \
+    -e '/[[:space:]]app-vm\([[:space:]]\|$\)/d' \
     -e '/[[:space:]]web-vm\([[:space:]]\|$\)/d' \
     -e '/[[:space:]]was-vm\([[:space:]]\|$\)/d' \
     -e '/[[:space:]]db-vm\([[:space:]]\|$\)/d' \
     /etc/hosts
 
   cat >>/etc/hosts <<EOF
+$APP_IP app-vm app.local
 $WEB_IP web-vm web.local
 $WAS_IP was-vm was.local
 $DB_IP db-vm db.local
@@ -216,6 +226,9 @@ configure_firewall() {
   ufw allow 22/tcp
 
   case "$ROLE" in
+    app)
+      ufw allow 80/tcp
+      ;;
     web)
       ufw allow 80/tcp
       ;;
@@ -223,7 +236,12 @@ configure_firewall() {
       ufw allow from "$WEB_IP" to any port 8000 proto tcp
       ;;
     db)
-      ufw allow from "$WAS_IP" to any port 3306 proto tcp
+      if [[ $APP_IP == "$WAS_IP" ]]; then
+        ufw allow from "$APP_IP" to any port 3306 proto tcp
+      else
+        ufw allow from "$APP_IP" to any port 3306 proto tcp
+        ufw allow from "$WAS_IP" to any port 3306 proto tcp
+      fi
       ;;
   esac
 
