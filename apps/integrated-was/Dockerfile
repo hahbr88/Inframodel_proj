@@ -23,7 +23,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 COPY --from=builder /opt/venv /opt/venv
-COPY . .
+COPY main.py .
+COPY app ./app
 
 EXPOSE 8000
 

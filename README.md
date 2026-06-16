@@ -6,6 +6,7 @@
 
 - [구축 가이드](docs/docker-compose-3tier/01-deployment-guide.md)
 - [VMware 검증 결과](docs/docker-compose-3tier/02-validation-result.md)
+- [이미지 경량화 전략](docs/docker-compose-3tier/03-image-optimization.md)
 - [빠른 배포 명령](deploy/README.md)
 
 ## VScode 다운로드 및 환경설정
