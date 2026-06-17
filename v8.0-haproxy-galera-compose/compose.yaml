@@ -1,0 +1,136 @@
+name: ${COMPOSE_PROJECT_NAME:-haproxy-galera}
+
+x-db-environment: &db-environment
+  TZ: Asia/Seoul
+  MARIADB_ROOT_PASSWORD_FILE: /run/secrets/mariadb_root_password
+  MARIADB_ROOT_HOST: localhost
+  MARIADB_DATABASE: ${MARIADB_DATABASE:-appdb}
+  MARIADB_USER: ${MARIADB_USER:-appuser}
+  MARIADB_USER_HOST: "%"
+  MARIADB_PASSWORD_FILE: /run/secrets/mariadb_app_password
+  MARIADB_AUTO_UPGRADE: "1"
+
+x-db-common: &db-common
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: haproxy-galera-mariadb:11.8.8
+  restart: unless-stopped
+  stop_grace_period: 2m
+  environment: *db-environment
+  secrets:
+    - mariadb_root_password
+    - mariadb_app_password
+    - mariadb_sst_password
+  healthcheck:
+    test:
+      - CMD-SHELL
+      - >-
+        MYSQL_PWD="$$(cat /run/secrets/mariadb_root_password)"
+        mariadb --protocol=socket -uroot -Nse
+        "SELECT CONCAT((SELECT VARIABLE_VALUE FROM information_schema.GLOBAL_STATUS WHERE VARIABLE_NAME='WSREP_READY'),':',(SELECT VARIABLE_VALUE FROM information_schema.GLOBAL_STATUS WHERE VARIABLE_NAME='WSREP_CONNECTED'),':',(SELECT VARIABLE_VALUE FROM information_schema.GLOBAL_STATUS WHERE VARIABLE_NAME='WSREP_LOCAL_STATE_COMMENT'));" 2>/dev/null
+        | grep -qx "ON:ON:Synced"
+    interval: 10s
+    timeout: 5s
+    retries: 30
+    start_period: 120s
+  networks:
+    galera_net:
+
+services:
+  haproxy:
+    image: haproxy:3.0-alpine
+    container_name: haproxy-galera
+    hostname: haproxy
+    restart: unless-stopped
+    depends_on:
+      db1:
+        condition: service_healthy
+      db2:
+        condition: service_healthy
+      db3:
+        condition: service_healthy
+    volumes:
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    ports:
+      - "${HAPROXY_BIND_IP:-0.0.0.0}:3306:3306"
+      - "${HAPROXY_STATS_BIND_IP:-127.0.0.1}:8404:8404"
+    networks:
+      galera_net:
+        ipv4_address: 192.168.100.5
+
+  db1:
+    <<: *db-common
+    container_name: db1
+    hostname: db1
+    environment:
+      <<: *db-environment
+      GALERA_BOOTSTRAP: ${GALERA_BOOTSTRAP_NODE1:-0}
+    volumes:
+      - db1_data:/var/lib/mysql
+      - ./config/60-galera-common.cnf:/etc/mysql/conf.d/60-galera-common.cnf:ro
+      - ./config/61-db1.cnf:/etc/mysql/conf.d/61-node.cnf:ro
+    ports:
+      - "${DB_DIRECT_BIND_IP:-127.0.0.1}:13306:3306"
+    networks:
+      galera_net:
+        ipv4_address: 192.168.100.30
+
+  db2:
+    <<: *db-common
+    container_name: db2
+    hostname: db2
+    environment:
+      <<: *db-environment
+      GALERA_BOOTSTRAP: "0"
+    volumes:
+      - db2_data:/var/lib/mysql
+      - ./config/60-galera-common.cnf:/etc/mysql/conf.d/60-galera-common.cnf:ro
+      - ./config/61-db2.cnf:/etc/mysql/conf.d/61-node.cnf:ro
+    ports:
+      - "${DB_DIRECT_BIND_IP:-127.0.0.1}:13307:3306"
+    networks:
+      galera_net:
+        ipv4_address: 192.168.100.40
+
+  db3:
+    <<: *db-common
+    container_name: db3
+    hostname: db3
+    environment:
+      <<: *db-environment
+      GALERA_BOOTSTRAP: "0"
+    volumes:
+      - db3_data:/var/lib/mysql
+      - ./config/60-galera-common.cnf:/etc/mysql/conf.d/60-galera-common.cnf:ro
+      - ./config/61-db3.cnf:/etc/mysql/conf.d/61-node.cnf:ro
+    ports:
+      - "${DB_DIRECT_BIND_IP:-127.0.0.1}:13308:3306"
+    networks:
+      galera_net:
+        ipv4_address: 192.168.100.50
+
+secrets:
+  mariadb_root_password:
+    file: ./secrets/root_password.txt
+  mariadb_app_password:
+    file: ./secrets/app_password.txt
+  mariadb_sst_password:
+    file: ./secrets/sst_password.txt
+
+volumes:
+  db1_data:
+    name: haproxy-galera-db1-data
+  db2_data:
+    name: haproxy-galera-db2-data
+  db3_data:
+    name: haproxy-galera-db3-data
+
+networks:
+  galera_net:
+    name: haproxy-galera-net
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.100.0/24
+          gateway: 192.168.100.1
