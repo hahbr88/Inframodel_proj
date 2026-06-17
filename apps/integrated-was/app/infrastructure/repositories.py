@@ -126,6 +126,10 @@ class QueryRepository:
         self.session = session
         self.course_catalog = load_course_catalog()
 
+    async def list_users(self) -> list[User]:
+        result = await self.session.execute(select(User).order_by(User.id))
+        return list(result.scalars().all())
+
     async def list_courses(self) -> list[Course]:
         result = await self.session.execute(select(Course).order_by(Course.id))
         return [self._enrich_course(course) for course in result.scalars().all()]
@@ -137,7 +141,10 @@ class QueryRepository:
     async def list_reservations(self, user_id: int | None = None) -> list[Reservation]:
         statement = (
             select(Reservation)
-            .options(selectinload(Reservation.course))
+            .options(
+                selectinload(Reservation.course),
+                selectinload(Reservation.user),
+            )
             .order_by(Reservation.id.desc())
         )
         if user_id is not None:

@@ -28,6 +28,7 @@ class MockReservation:
     course_id: int
     reservation_date: datetime
     status: str
+    user: MockUser
     course: CatalogCourse
 
 
@@ -71,6 +72,7 @@ class MockStore:
                 course_id=item["course_id"],
                 reservation_date=datetime.fromisoformat(item["reservation_date"]),
                 status=item["status"],
+                user=self._find_user_by_id(item.get("user_id", 1)),
                 course=self.courses[item["course_id"]],
             )
             for item in payload["reservations"]
@@ -103,6 +105,12 @@ class MockStore:
 
     def next_user_id(self) -> int:
         return max((user.id for user in self.users.values()), default=0) + 1
+
+    def _find_user_by_id(self, user_id: int) -> MockUser:
+        for user in self.users.values():
+            if user.id == user_id:
+                return user
+        return self.users[settings.admin_username]
 
 
 class MockCommandRepository:
@@ -165,6 +173,7 @@ class MockCommandRepository:
             course_id=course_id,
             reservation_date=reservation_date,
             status="CONFIRMED",
+            user=self.store._find_user_by_id(user_id),
             course=self.store.courses[course_id],
         )
         self.store.reservations[reservation.id] = reservation
@@ -231,6 +240,9 @@ class MockCommandRepository:
 class MockQueryRepository:
     def __init__(self, store: MockStore):
         self.store = store
+
+    async def list_users(self) -> list[MockUser]:
+        return sorted(self.store.users.values(), key=lambda item: item.id)
 
     async def list_courses(self) -> list[CatalogCourse]:
         self.store.refresh_course_metadata()

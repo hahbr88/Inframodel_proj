@@ -22,6 +22,8 @@ class AdminDashboardResponse(BaseModel):
 
 class AdminReservationResponse(BaseModel):
     id: int
+    user_id: int
+    username: str
     course_id: int
     course_name: str
     reservation_date: datetime
@@ -42,3 +44,17 @@ class AdminCourseListResponse(BaseModel):
     next_cursor: int | None = None
     has_next: bool
     courses: list[CourseCatalogItem]
+
+
+class AdminUserResponse(BaseModel):
+    id: int
+    username: str
+    status: str
+    reservation_count: int
+    active_reservation_count: int
+
+
+class AdminUserListResponse(BaseModel):
+    status: str = "success"
+    count: int
+    users: list[AdminUserResponse]
