@@ -399,6 +399,7 @@ db3가 `healthy`가 되면 상태를 확인한다.
 chmod +x scripts/status-vm.sh
 ./scripts/status-vm.sh
 ```
+![alt text](image-2.png)
 
 합류 중에는 db1 또는 db2가 잠시 `Donor/Desynced`로 보일 수 있다. db3의 로그에 `Shifting JOINED -> SYNCED`와 `Synchronized with group, ready for connections`가 보이면 정상 합류다.
 
