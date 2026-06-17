@@ -5,6 +5,7 @@ import { CoursesPage } from './pages/CoursesPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
 import { ReservationsPage } from './pages/ReservationsPage';
+import { UsersPage } from './pages/UsersPage';
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
         <Route element={<AdminLayout />}>
           <Route index element={<DashboardPage />} />
           <Route path="/reservations" element={<ReservationsPage />} />
+          <Route path="/users" element={<UsersPage />} />
           <Route path="/courses" element={<CoursesPage />} />
         </Route>
       </Route>

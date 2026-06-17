@@ -5,8 +5,13 @@ from app.admin.schemas import (
     AdminDashboardResponse,
     AdminReservationListResponse,
     AdminSessionResponse,
+    AdminUserListResponse,
 )
-from app.admin.services import AdminAuthService, AdminQueryService
+from app.admin.services import (
+    AdminAuthService,
+    AdminQueryService,
+    AdminUserCommandService,
+)
 from app.commands.schemas import CommandResponse, LoginRequest, ReservationUpdate
 from app.commands.services import ReservationCommandService
 from app.core.config import settings
@@ -42,6 +47,12 @@ def get_admin_reservation_service(
     repository: CommandRepositoryPort = Depends(get_command_repository),
 ) -> ReservationCommandService:
     return ReservationCommandService(repository)
+
+
+def get_admin_user_service(
+    repository: CommandRepositoryPort = Depends(get_command_repository),
+) -> AdminUserCommandService:
+    return AdminUserCommandService(repository)
 
 
 def get_admin_course_service(
@@ -101,6 +112,24 @@ async def list_reservations(
     service: AdminQueryService = Depends(get_admin_query_service),
 ) -> AdminReservationListResponse:
     return await service.list_reservations()
+
+
+@router.get("/users", response_model=AdminUserListResponse)
+async def list_users(
+    _admin_id: int = Depends(require_admin_user),
+    service: AdminQueryService = Depends(get_admin_query_service),
+) -> AdminUserListResponse:
+    return await service.list_users()
+
+
+@router.delete("/users/{user_id}", response_model=CommandResponse)
+async def deactivate_user(
+    user_id: int,
+    _admin_id: int = Depends(require_admin_user),
+    service: AdminUserCommandService = Depends(get_admin_user_service),
+) -> CommandResponse:
+    await service.deactivate(user_id)
+    return CommandResponse(message="User was deactivated")
 
 
 @router.patch("/reservations/{reservation_id}", response_model=CommandResponse)

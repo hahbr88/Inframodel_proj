@@ -82,6 +82,7 @@ def test_admin_login_dashboard_reservations_and_courses() -> None:
         session_response = client.get("/api/admin/session")
         dashboard_response = client.get("/api/admin/dashboard")
         reservations_response = client.get("/api/admin/reservations")
+        users_response = client.get("/api/admin/users")
         courses_response = client.get("/api/admin/courses", params={"limit": 2})
 
     assert login_response.status_code == 200
@@ -91,8 +92,50 @@ def test_admin_login_dashboard_reservations_and_courses() -> None:
     assert dashboard_response.status_code == 200
     assert dashboard_response.json()["course_count"] == 434
     assert reservations_response.status_code == 200
+    assert users_response.status_code == 200
+    assert users_response.json()["count"] >= 1
     assert courses_response.status_code == 200
     assert courses_response.json()["count"] == 2
+
+
+def test_admin_reservations_include_owner() -> None:
+    with TestClient(app) as client:
+        client.post(
+            "/api/admin/auth/login",
+            json={"username": "admin", "password": "password123"},
+        )
+        response = client.get("/api/admin/reservations")
+
+    assert response.status_code == 200
+    reservation = response.json()["reservations"][0]
+    assert "user_id" in reservation
+    assert "username" in reservation
+
+
+def test_admin_can_deactivate_user() -> None:
+    with TestClient(app) as admin_client, TestClient(app) as user_client:
+        user_client.post(
+            "/api/auth/signup",
+            json={"username": "admin-disabled-user", "password": "password123"},
+        )
+        admin_client.post(
+            "/api/admin/auth/login",
+            json={"username": "admin", "password": "password123"},
+        )
+        users_response = admin_client.get("/api/admin/users")
+        user_id = next(
+            item["id"]
+            for item in users_response.json()["users"]
+            if item["username"] == "admin-disabled-user"
+        )
+        deactivate_response = admin_client.delete(f"/api/admin/users/{user_id}")
+        login_response = user_client.post(
+            "/api/auth/login",
+            json={"username": "admin-disabled-user", "password": "password123"},
+        )
+
+    assert deactivate_response.status_code == 200
+    assert login_response.status_code == 401
 
 
 def test_login_create_and_list_reservation() -> None:

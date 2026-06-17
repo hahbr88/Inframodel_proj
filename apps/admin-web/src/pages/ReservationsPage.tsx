@@ -92,6 +92,8 @@ export function ReservationsPage() {
     return items.filter(
       (item) =>
         item.course_name.toLocaleLowerCase().includes(normalized) ||
+        item.username.toLocaleLowerCase().includes(normalized) ||
+        String(item.user_id).includes(normalized) ||
         String(item.id).includes(normalized),
     );
   }, [keyword, reservationsQuery.data]);
@@ -106,7 +108,7 @@ export function ReservationsPage() {
           <TextInput
             value={keyword}
             onChange={(event) => setKeyword(event.currentTarget.value)}
-            placeholder="코스명 또는 예약 번호"
+            placeholder="예약자, 코스명, 예약 번호"
             leftSection={<IconSearch size={17} />}
           />
         }
@@ -127,6 +129,7 @@ export function ReservationsPage() {
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>예약 번호</Table.Th>
+                  <Table.Th>예약자</Table.Th>
                   <Table.Th>코스</Table.Th>
                   <Table.Th>예약 일시</Table.Th>
                   <Table.Th>상태</Table.Th>
@@ -137,6 +140,12 @@ export function ReservationsPage() {
                 {reservations.map((reservation) => (
                   <Table.Tr key={reservation.id}>
                     <Table.Td>#{reservation.id}</Table.Td>
+                    <Table.Td>
+                      <Text fw={700}>{reservation.username}</Text>
+                      <Text size="xs" c="dimmed">
+                        사용자 #{reservation.user_id}
+                      </Text>
+                    </Table.Td>
                     <Table.Td>
                       <Text fw={700}>{reservation.course_name}</Text>
                       <Text size="xs" c="dimmed">

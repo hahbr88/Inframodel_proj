@@ -157,7 +157,7 @@ export function AppHeader() {
                   leftSection={<IconKey size={17} />}
                   onClick={() => setPasswordOpened(true)}
                 >
-                  비밀번호 변경
+                  회원정보 수정
                 </Menu.Item>
                 <Menu.Divider />
                 <Menu.Item
@@ -197,7 +197,7 @@ export function AppHeader() {
       <Modal
         opened={passwordOpened}
         onClose={() => setPasswordOpened(false)}
-        title="비밀번호 변경"
+        title="회원정보 수정"
         centered
         size="sm"
       >
@@ -250,7 +250,7 @@ export function AppHeader() {
         >
           <Stack>
             <Text c="dimmed" size="sm">
-              탈퇴 후 계정으로 다시 로그인할 수 없습니다.
+              탈퇴 후에는 이 계정으로 다시 로그인할 수 없습니다.
             </Text>
             <TextInput
               label="아이디"
