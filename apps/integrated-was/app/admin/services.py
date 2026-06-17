@@ -25,7 +25,7 @@ class AdminAuthService:
         if (
             user is None
             or not verify_password(payload.password, user.password_hash)
-            or user.username != settings.admin_username
+            or getattr(user, "role", "USER") != "ADMIN"
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -83,6 +83,7 @@ class AdminQueryService:
             AdminUserResponse(
                 id=user.id,
                 username=user.username,
+                role=getattr(user, "role", "USER"),
                 status=getattr(user, "status", "ACTIVE"),
                 reservation_count=sum(
                     1 for reservation in reservations if reservation.user_id == user.id

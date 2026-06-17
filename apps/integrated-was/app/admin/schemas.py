@@ -49,6 +49,7 @@ class AdminCourseListResponse(BaseModel):
 class AdminUserResponse(BaseModel):
     id: int
     username: str
+    role: str
     status: str
     reservation_count: int
     active_reservation_count: int

@@ -94,6 +94,7 @@ export function UsersPage() {
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>사용자</Table.Th>
+                  <Table.Th>권한</Table.Th>
                   <Table.Th>상태</Table.Th>
                   <Table.Th>전체 예약</Table.Th>
                   <Table.Th>활성 예약</Table.Th>
@@ -108,6 +109,14 @@ export function UsersPage() {
                       <Text size="xs" c="dimmed">
                         사용자 #{user.id}
                       </Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Badge
+                        color={user.role === 'ADMIN' ? 'indigo' : 'gray'}
+                        variant="light"
+                      >
+                        {user.role === 'ADMIN' ? '관리자' : '사용자'}
+                      </Badge>
                     </Table.Td>
                     <Table.Td>
                       <Badge
@@ -127,7 +136,9 @@ export function UsersPage() {
                           <ActionIcon
                             variant="subtle"
                             color="red"
-                            disabled={user.status !== 'ACTIVE'}
+                            disabled={
+                              user.status !== 'ACTIVE' || user.role === 'ADMIN'
+                            }
                             onClick={() => setDeactivating(user)}
                           >
                             <IconUserX size={18} />

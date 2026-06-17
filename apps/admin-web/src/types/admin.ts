@@ -26,6 +26,7 @@ export interface AdminReservationListResponse {
 export interface AdminUser {
   id: number;
   username: string;
+  role: string;
   status: string;
   reservation_count: number;
   active_reservation_count: number;
