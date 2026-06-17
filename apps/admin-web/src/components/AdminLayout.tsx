@@ -15,6 +15,7 @@ import {
   IconLogout,
   IconMapRoute,
   IconShieldCheck,
+  IconUsers,
 } from '@tabler/icons-react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAdminAuth } from '../context/adminAuth';
@@ -22,6 +23,7 @@ import { useAdminAuth } from '../context/adminAuth';
 const navigation = [
   { label: '대시보드', path: '/', icon: IconLayoutDashboard },
   { label: '예약 관리', path: '/reservations', icon: IconCalendarEvent },
+  { label: '사용자 관리', path: '/users', icon: IconUsers },
   { label: '코스 현황', path: '/courses', icon: IconMapRoute },
 ];
 

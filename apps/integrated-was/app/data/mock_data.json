@@ -17,7 +17,14 @@
     {
       "id": 1,
       "username": "admin",
-      "password": "password123"
+      "password": "password123",
+      "role": "ADMIN"
+    },
+    {
+      "id": 2,
+      "username": "traveler",
+      "password": "password123",
+      "role": "USER"
     }
   ],
   "courses": [
@@ -39,12 +46,14 @@
   "reservations": [
     {
       "id": 1,
+      "user_id": 1,
       "course_id": 1,
       "reservation_date": "2026-06-15T14:00:00+09:00",
       "status": "CONFIRMED"
     },
     {
       "id": 2,
+      "user_id": 1,
       "course_id": 52,
       "reservation_date": "2026-06-18T18:00:00+09:00",
       "status": "PENDING"

@@ -9,6 +9,8 @@ export interface AdminDashboard {
 
 export interface AdminReservation {
   id: number;
+  user_id: number;
+  username: string;
   course_id: number;
   course_name: string;
   reservation_date: string;
@@ -19,6 +21,21 @@ export interface AdminReservationListResponse {
   status: string;
   count: number;
   reservations: AdminReservation[];
+}
+
+export interface AdminUser {
+  id: number;
+  username: string;
+  role: string;
+  status: string;
+  reservation_count: number;
+  active_reservation_count: number;
+}
+
+export interface AdminUserListResponse {
+  status: string;
+  count: number;
+  users: AdminUser[];
 }
 
 export interface WeatherSummary {

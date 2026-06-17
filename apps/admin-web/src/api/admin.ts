@@ -2,6 +2,7 @@ import type {
   AdminCourseListResponse,
   AdminDashboard,
   AdminReservationListResponse,
+  AdminUserListResponse,
 } from '../types/admin';
 import { apiClient } from './client';
 
@@ -32,6 +33,16 @@ export async function cancelAdminReservation(reservationId: number) {
   const response = await apiClient.delete(
     `/api/admin/reservations/${reservationId}`,
   );
+  return response.data;
+}
+
+export async function getAdminUsers() {
+  const response = await apiClient.get<AdminUserListResponse>('/api/admin/users');
+  return response.data;
+}
+
+export async function deactivateAdminUser(userId: number) {
+  const response = await apiClient.delete(`/api/admin/users/${userId}`);
   return response.data;
 }
 

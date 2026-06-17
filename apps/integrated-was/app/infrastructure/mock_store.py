@@ -18,14 +18,18 @@ class MockUser:
     id: int
     username: str
     password_hash: str
+    role: str = "USER"
+    status: str = "ACTIVE"
 
 
 @dataclass
 class MockReservation:
     id: int
+    user_id: int
     course_id: int
     reservation_date: datetime
     status: str
+    user: MockUser
     course: CatalogCourse
 
 
@@ -42,6 +46,7 @@ class MockStore:
                 id=item["id"],
                 username=item["username"],
                 password_hash=hash_password(item["password"]),
+                role=item.get("role", "USER"),
             )
             for item in payload["users"]
         }
@@ -55,6 +60,7 @@ class MockStore:
             id=1,
             username=settings.admin_username,
             password_hash=hash_password(settings.admin_password),
+            role="ADMIN",
         )
         self.courses = load_course_catalog()
         for item in payload["courses"]:
@@ -65,9 +71,11 @@ class MockStore:
         self.reservations = {
             item["id"]: MockReservation(
                 id=item["id"],
+                user_id=item.get("user_id", 1),
                 course_id=item["course_id"],
                 reservation_date=datetime.fromisoformat(item["reservation_date"]),
                 status=item["status"],
+                user=self._find_user_by_id(item.get("user_id", 1)),
                 course=self.courses[item["course_id"]],
             )
             for item in payload["reservations"]
@@ -98,13 +106,60 @@ class MockStore:
     def next_reservation_id(self) -> int:
         return max(self.reservations, default=0) + 1
 
+    def next_user_id(self) -> int:
+        return max((user.id for user in self.users.values()), default=0) + 1
+
+    def _find_user_by_id(self, user_id: int) -> MockUser:
+        for user in self.users.values():
+            if user.id == user_id:
+                return user
+        return self.users[settings.admin_username]
+
 
 class MockCommandRepository:
     def __init__(self, store: MockStore):
         self.store = store
 
     async def get_user_by_username(self, username: str) -> MockUser | None:
-        return self.store.users.get(username)
+        user = self.store.users.get(username)
+        if user is None or user.status != "ACTIVE":
+            return None
+        return user
+
+    async def get_user(self, user_id: int) -> MockUser | None:
+        for user in self.store.users.values():
+            if user.id == user_id and user.status == "ACTIVE":
+                return user
+        return None
+
+    async def create_user(self, username: str, password_hash: str) -> MockUser:
+        user = MockUser(
+            id=self.store.next_user_id(),
+            username=username,
+            password_hash=password_hash,
+            role="USER",
+        )
+        self.store.users[user.username] = user
+        return user
+
+    async def update_user_password(
+        self,
+        user_id: int,
+        password_hash: str,
+    ) -> MockUser | None:
+        user = await self.get_user(user_id)
+        if user is not None:
+            user.password_hash = password_hash
+        return user
+
+    async def deactivate_user(self, user_id: int) -> MockUser | None:
+        user = await self.get_user(user_id)
+        if user is not None:
+            self.store.users.pop(user.username, None)
+            user.status = "DELETED"
+            user.username = f"deleted:{user.id}:{user.username}"
+            self.store.users[user.username] = user
+        return user
 
     async def get_course(self, course_id: int) -> CatalogCourse | None:
         self.store.refresh_course_metadata()
@@ -112,14 +167,17 @@ class MockCommandRepository:
 
     async def create_reservation(
         self,
+        user_id: int,
         course_id: int,
         reservation_date: datetime,
     ) -> MockReservation:
         reservation = MockReservation(
             id=self.store.next_reservation_id(),
+            user_id=user_id,
             course_id=course_id,
             reservation_date=reservation_date,
             status="CONFIRMED",
+            user=self.store._find_user_by_id(user_id),
             course=self.store.courses[course_id],
         )
         self.store.reservations[reservation.id] = reservation
@@ -128,8 +186,9 @@ class MockCommandRepository:
     async def cancel_reservation(
         self,
         reservation_id: int,
+        user_id: int | None = None,
     ) -> MockReservation | None:
-        reservation = self.store.reservations.get(reservation_id)
+        reservation = self._get_reservation(reservation_id, user_id)
         if reservation is not None:
             self.store.pending_snapshot = {
                 reservation.id: (
@@ -144,8 +203,9 @@ class MockCommandRepository:
         self,
         reservation_id: int,
         reservation_date: datetime,
+        user_id: int | None = None,
     ) -> MockReservation | None:
-        reservation = self.store.reservations.get(reservation_id)
+        reservation = self._get_reservation(reservation_id, user_id)
         if reservation is not None:
             self.store.pending_snapshot = {
                 reservation.id: (
@@ -154,6 +214,18 @@ class MockCommandRepository:
                 ),
             }
             reservation.reservation_date = reservation_date
+        return reservation
+
+    def _get_reservation(
+        self,
+        reservation_id: int,
+        user_id: int | None = None,
+    ) -> MockReservation | None:
+        reservation = self.store.reservations.get(reservation_id)
+        if reservation is None:
+            return None
+        if user_id is not None and reservation.user_id != user_id:
+            return None
         return reservation
 
     async def commit(self) -> None:
@@ -173,6 +245,9 @@ class MockQueryRepository:
     def __init__(self, store: MockStore):
         self.store = store
 
+    async def list_users(self) -> list[MockUser]:
+        return sorted(self.store.users.values(), key=lambda item: item.id)
+
     async def list_courses(self) -> list[CatalogCourse]:
         self.store.refresh_course_metadata()
         return sorted(self.store.courses.values(), key=lambda item: item.id)
@@ -181,9 +256,19 @@ class MockQueryRepository:
         self.store.refresh_course_metadata()
         return self.store.courses.get(course_id)
 
-    async def list_reservations(self) -> list[MockReservation]:
+    async def list_reservations(
+        self,
+        user_id: int | None = None,
+    ) -> list[MockReservation]:
+        reservations = self.store.reservations.values()
+        if user_id is not None:
+            reservations = [
+                reservation
+                for reservation in reservations
+                if reservation.user_id == user_id
+            ]
         return sorted(
-            self.store.reservations.values(),
+            reservations,
             key=lambda item: item.id,
             reverse=True,
         )

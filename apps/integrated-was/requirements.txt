@@ -8,3 +8,4 @@ httpx==0.28.1
 redis==6.2.0
 PyJWT==2.10.1
 pwdlib[argon2]==0.2.1
+boto3==1.35.99
