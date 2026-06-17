@@ -1,0 +1,22 @@
+[mariadbd]
+bind-address=0.0.0.0
+skip-name-resolve
+
+# Galera 필수 설정
+default_storage_engine=InnoDB
+binlog_format=ROW
+innodb_autoinc_lock_mode=2
+innodb_flush_log_at_trx_commit=1
+wsrep_on=ON
+wsrep_provider=/usr/lib/galera/libgalera_smm.so
+wsrep_cluster_name=three-tier-galera
+wsrep_cluster_address=gcomm://172.30.0.11,172.30.0.12,172.30.0.13
+wsrep_sst_method=mariabackup
+
+# 짧은 장애 후 전체 SST 대신 IST가 가능하도록 write-set 캐시를 유지한다.
+wsrep_provider_options="gcache.size=512M;gcache.recover=yes"
+
+# 공통 DB 설정
+character-set-server=utf8mb4
+collation-server=utf8mb4_unicode_ci
+max_connections=300
