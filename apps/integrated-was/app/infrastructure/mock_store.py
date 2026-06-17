@@ -18,6 +18,7 @@ class MockUser:
     id: int
     username: str
     password_hash: str
+    role: str = "USER"
     status: str = "ACTIVE"
 
 
@@ -45,6 +46,7 @@ class MockStore:
                 id=item["id"],
                 username=item["username"],
                 password_hash=hash_password(item["password"]),
+                role=item.get("role", "USER"),
             )
             for item in payload["users"]
         }
@@ -58,6 +60,7 @@ class MockStore:
             id=1,
             username=settings.admin_username,
             password_hash=hash_password(settings.admin_password),
+            role="ADMIN",
         )
         self.courses = load_course_catalog()
         for item in payload["courses"]:
@@ -134,6 +137,7 @@ class MockCommandRepository:
             id=self.store.next_user_id(),
             username=username,
             password_hash=password_hash,
+            role="USER",
         )
         self.store.users[user.username] = user
         return user

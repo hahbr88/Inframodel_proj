@@ -17,12 +17,14 @@
     {
       "id": 1,
       "username": "admin",
-      "password": "password123"
+      "password": "password123",
+      "role": "ADMIN"
     },
     {
       "id": 2,
       "username": "traveler",
-      "password": "password123"
+      "password": "password123",
+      "role": "USER"
     }
   ],
   "courses": [

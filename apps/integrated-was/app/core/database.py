@@ -49,6 +49,7 @@ async def initialize_database() -> None:
         await connection.run_sync(Base.metadata.create_all)
 
     async with WriteSessionFactory() as session:
+        await _ensure_user_role_column(session)
         await _ensure_user_status_column(session)
 
         admin_user = await session.scalar(
@@ -58,6 +59,7 @@ async def initialize_database() -> None:
             admin_user = User(
                 username=settings.admin_username,
                 password_hash=hash_password(settings.admin_password),
+                role="ADMIN",
             )
             session.add(admin_user)
             await session.flush()
@@ -66,6 +68,9 @@ async def initialize_database() -> None:
             admin_user.password_hash,
         ):
             admin_user.password_hash = hash_password(settings.admin_password)
+            await session.flush()
+        if admin_user.role != "ADMIN":
+            admin_user.role = "ADMIN"
             await session.flush()
 
         await _ensure_reservation_owner_column(session, admin_user.id)
@@ -147,4 +152,27 @@ async def _ensure_user_status_column(session: AsyncSession) -> None:
     )
     await session.execute(
         text("UPDATE users SET status = 'ACTIVE' WHERE status IS NULL")
+    )
+
+
+async def _ensure_user_role_column(session: AsyncSession) -> None:
+    connection = await session.connection()
+
+    def has_role(sync_connection) -> bool:
+        inspector = inspect(sync_connection)
+        if not inspector.has_table("users"):
+            return True
+        columns = inspector.get_columns("users")
+        return any(column["name"] == "role" for column in columns)
+
+    if await connection.run_sync(has_role):
+        return
+
+    await session.execute(
+        text("ALTER TABLE users ADD COLUMN role VARCHAR(30) DEFAULT 'USER'")
+    )
+    await session.execute(text("UPDATE users SET role = 'USER' WHERE role IS NULL"))
+    await session.execute(
+        text("UPDATE users SET role = 'ADMIN' WHERE username = :username"),
+        {"username": settings.admin_username},
     )

@@ -34,6 +34,7 @@ class CommandRepository:
         user = User(
             username=username,
             password_hash=password_hash,
+            role="USER",
             status="ACTIVE",
         )
         self.session.add(user)

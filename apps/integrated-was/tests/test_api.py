@@ -94,6 +94,7 @@ def test_admin_login_dashboard_reservations_and_courses() -> None:
     assert reservations_response.status_code == 200
     assert users_response.status_code == 200
     assert users_response.json()["count"] >= 1
+    assert users_response.json()["users"][0]["role"] in {"ADMIN", "USER"}
     assert courses_response.status_code == 200
     assert courses_response.json()["count"] == 2
 
@@ -136,6 +137,23 @@ def test_admin_can_deactivate_user() -> None:
 
     assert deactivate_response.status_code == 200
     assert login_response.status_code == 401
+
+
+def test_admin_account_cannot_be_deactivated() -> None:
+    with TestClient(app) as client:
+        client.post(
+            "/api/admin/auth/login",
+            json={"username": "admin", "password": "password123"},
+        )
+        users_response = client.get("/api/admin/users")
+        admin_id = next(
+            item["id"]
+            for item in users_response.json()["users"]
+            if item["role"] == "ADMIN"
+        )
+        response = client.delete(f"/api/admin/users/{admin_id}")
+
+    assert response.status_code == 409
 
 
 def test_login_create_and_list_reservation() -> None:
