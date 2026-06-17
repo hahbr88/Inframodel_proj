@@ -149,7 +149,7 @@ export function DashboardPage() {
                   <div>
                     <Text fw={700}>{reservation.course_name}</Text>
                     <Text size="xs" c="dimmed">
-                      예약 #{reservation.id}
+                      예약 #{reservation.id} · {reservation.username}
                     </Text>
                   </div>
                   <Badge
