@@ -235,8 +235,8 @@ class ReservationQueryService:
     def __init__(self, repository: QueryRepositoryPort):
         self.repository = repository
 
-    async def list_all(self) -> ReservationListResponse:
-        reservations = await self.repository.list_reservations()
+    async def list_all(self, user_id: int | None = None) -> ReservationListResponse:
+        reservations = await self.repository.list_reservations(user_id=user_id)
         items = [
             ReservationResponse(
                 id=reservation.id,

@@ -23,6 +23,7 @@ class MockUser:
 @dataclass
 class MockReservation:
     id: int
+    user_id: int
     course_id: int
     reservation_date: datetime
     status: str
@@ -65,6 +66,7 @@ class MockStore:
         self.reservations = {
             item["id"]: MockReservation(
                 id=item["id"],
+                user_id=item.get("user_id", 1),
                 course_id=item["course_id"],
                 reservation_date=datetime.fromisoformat(item["reservation_date"]),
                 status=item["status"],
@@ -112,11 +114,13 @@ class MockCommandRepository:
 
     async def create_reservation(
         self,
+        user_id: int,
         course_id: int,
         reservation_date: datetime,
     ) -> MockReservation:
         reservation = MockReservation(
             id=self.store.next_reservation_id(),
+            user_id=user_id,
             course_id=course_id,
             reservation_date=reservation_date,
             status="CONFIRMED",
@@ -128,8 +132,9 @@ class MockCommandRepository:
     async def cancel_reservation(
         self,
         reservation_id: int,
+        user_id: int | None = None,
     ) -> MockReservation | None:
-        reservation = self.store.reservations.get(reservation_id)
+        reservation = self._get_reservation(reservation_id, user_id)
         if reservation is not None:
             self.store.pending_snapshot = {
                 reservation.id: (
@@ -144,8 +149,9 @@ class MockCommandRepository:
         self,
         reservation_id: int,
         reservation_date: datetime,
+        user_id: int | None = None,
     ) -> MockReservation | None:
-        reservation = self.store.reservations.get(reservation_id)
+        reservation = self._get_reservation(reservation_id, user_id)
         if reservation is not None:
             self.store.pending_snapshot = {
                 reservation.id: (
@@ -154,6 +160,18 @@ class MockCommandRepository:
                 ),
             }
             reservation.reservation_date = reservation_date
+        return reservation
+
+    def _get_reservation(
+        self,
+        reservation_id: int,
+        user_id: int | None = None,
+    ) -> MockReservation | None:
+        reservation = self.store.reservations.get(reservation_id)
+        if reservation is None:
+            return None
+        if user_id is not None and reservation.user_id != user_id:
+            return None
         return reservation
 
     async def commit(self) -> None:
@@ -181,9 +199,19 @@ class MockQueryRepository:
         self.store.refresh_course_metadata()
         return self.store.courses.get(course_id)
 
-    async def list_reservations(self) -> list[MockReservation]:
+    async def list_reservations(
+        self,
+        user_id: int | None = None,
+    ) -> list[MockReservation]:
+        reservations = self.store.reservations.values()
+        if user_id is not None:
+            reservations = [
+                reservation
+                for reservation in reservations
+                if reservation.user_id == user_id
+            ]
         return sorted(
-            self.store.reservations.values(),
+            reservations,
             key=lambda item: item.id,
             reverse=True,
         )

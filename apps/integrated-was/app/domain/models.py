@@ -31,6 +31,7 @@ class Reservation(Base):
     __tablename__ = "reservations"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     course_id: Mapped[int] = mapped_column(ForeignKey("courses.id"), index=True)
     reservation_date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(String(30), default="CONFIRMED")
@@ -39,6 +40,7 @@ class Reservation(Base):
         server_default=func.now(),
     )
 
+    user: Mapped[User] = relationship(lazy="joined")
     course: Mapped[Course] = relationship(lazy="joined")
 
 

@@ -9,6 +9,7 @@ class CommandRepositoryPort(Protocol):
 
     async def create_reservation(
         self,
+        user_id: int,
         course_id: int,
         reservation_date: datetime,
     ) -> Any: ...
@@ -17,9 +18,14 @@ class CommandRepositoryPort(Protocol):
         self,
         reservation_id: int,
         reservation_date: datetime,
+        user_id: int | None = None,
     ) -> Any | None: ...
 
-    async def cancel_reservation(self, reservation_id: int) -> Any | None: ...
+    async def cancel_reservation(
+        self,
+        reservation_id: int,
+        user_id: int | None = None,
+    ) -> Any | None: ...
 
     async def commit(self) -> None: ...
 
@@ -31,7 +37,7 @@ class QueryRepositoryPort(Protocol):
 
     async def get_course(self, course_id: int) -> Any | None: ...
 
-    async def list_reservations(self) -> list[Any]: ...
+    async def list_reservations(self, user_id: int | None = None) -> list[Any]: ...
 
 
 class WeatherClientPort(Protocol):

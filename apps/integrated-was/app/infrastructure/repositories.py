@@ -23,10 +23,12 @@ class CommandRepository:
 
     async def create_reservation(
         self,
+        user_id: int,
         course_id: int,
         reservation_date: datetime,
     ) -> Reservation:
         reservation = Reservation(
+            user_id=user_id,
             course_id=course_id,
             reservation_date=reservation_date,
             status="CONFIRMED",
@@ -40,19 +42,35 @@ class CommandRepository:
         self,
         reservation_id: int,
         reservation_date: datetime,
+        user_id: int | None = None,
     ) -> Reservation | None:
-        reservation = await self.session.get(Reservation, reservation_id)
+        reservation = await self._get_reservation(reservation_id, user_id)
         if reservation is not None:
             reservation.reservation_date = reservation_date
             await self.session.flush()
         return reservation
 
-    async def cancel_reservation(self, reservation_id: int) -> Reservation | None:
-        reservation = await self.session.get(Reservation, reservation_id)
+    async def cancel_reservation(
+        self,
+        reservation_id: int,
+        user_id: int | None = None,
+    ) -> Reservation | None:
+        reservation = await self._get_reservation(reservation_id, user_id)
         if reservation is not None:
             reservation.status = "CANCELLED"
             await self.session.flush()
         return reservation
+
+    async def _get_reservation(
+        self,
+        reservation_id: int,
+        user_id: int | None = None,
+    ) -> Reservation | None:
+        statement = select(Reservation).where(Reservation.id == reservation_id)
+        if user_id is not None:
+            statement = statement.where(Reservation.user_id == user_id)
+        result = await self.session.execute(statement)
+        return result.scalar_one_or_none()
 
     async def commit(self) -> None:
         await self.session.commit()
@@ -74,12 +92,15 @@ class QueryRepository:
         course = await self.session.get(Course, course_id)
         return None if course is None else self._enrich_course(course)
 
-    async def list_reservations(self) -> list[Reservation]:
-        result = await self.session.execute(
+    async def list_reservations(self, user_id: int | None = None) -> list[Reservation]:
+        statement = (
             select(Reservation)
             .options(selectinload(Reservation.course))
             .order_by(Reservation.id.desc())
         )
+        if user_id is not None:
+            statement = statement.where(Reservation.user_id == user_id)
+        result = await self.session.execute(statement)
         return list(result.scalars().all())
 
     def _enrich_course(self, course: Course) -> Course:
