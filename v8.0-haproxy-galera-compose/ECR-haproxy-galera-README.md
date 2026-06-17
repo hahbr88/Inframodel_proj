@@ -4,10 +4,10 @@
 
 ## 1. 배포 대상
 
-| 대상 | 이미지 | ECR 필요 여부 | 비고 |
-|---|---|---|---|
-| Galera DB | `haproxy-galera-mariadb` | 필수 | 이 프로젝트의 `Dockerfile`로 빌드하는 커스텀 MariaDB 이미지 |
-| HAProxy | `haproxy:3.0-alpine` | 선택 | 기본은 Docker Hub 공식 이미지 사용, 필요 시 ECR로 미러링 |
+| 대상      | 이미지                   | ECR 필요 여부 | 비고                                                        |
+| --------- | ------------------------ | ------------- | ----------------------------------------------------------- |
+| Galera DB | `haproxy-galera-mariadb` | 필수          | 이 프로젝트의 `Dockerfile`로 빌드하는 커스텀 MariaDB 이미지 |
+| HAProxy   | `haproxy:3.0-alpine`     | 선택          | 기본은 Docker Hub 공식 이미지 사용, 필요 시 ECR로 미러링    |
 
 Secret 파일과 `.env`는 이미지에 포함하지 않는다. `secrets/*.txt`, `.env`, `haproxy/haproxy.vm.cfg`, `config/vm/60-galera-common.cnf`는 각 VM의 파일시스템에 배치한다.
 
@@ -338,7 +338,79 @@ ecr:BatchCheckLayerAvailability
 ecr:GetDownloadUrlForLayer
 ```
 
-## 15. 정리
+## 15. ECR Lifecycle Policy 적용 및 검증
+
+### 목적
+
+Amazon ECR 저장소에 저장되는 컨테이너 이미지의 무분별한 증가를 방지하고 저장소 용량을 효율적으로 관리하기 위해 Lifecycle Policy를 적용한다.
+
+---
+
+### 적용 대상
+
+- inframodel-admin-web
+- inframodel-service-web
+- inframodel-was
+
+---
+
+### 정책 설정
+
+| 항목          | 값                    |
+| ------------- | --------------------- |
+| Rule Priority | 1                     |
+| Tag Status    | Any                   |
+| Count Type    | Image Count More Than |
+| Image Count   | 5                     |
+| Action        | Expire                |
+
+---
+
+### 정책 내용
+
+각 ECR 저장소에 대해 최신 5개의 이미지만 유지하고, 이를 초과하는 이미지는 자동 삭제 대상으로 관리하도록 Lifecycle Policy를 구성하였다.
+
+이를 통해 불필요한 이미지 누적을 방지하고 저장소 운영 및 관리 효율성을 향상시킬 수 있다.
+
+---
+
+### 검증 방법
+
+1. AWS ECR 콘솔에서 각 저장소의 Lifecycle Policy 적용 여부를 확인한다.
+2. Lifecycle Policy Preview를 실행한다.
+3. 정책 설정이 정상 반영되었는지 확인한다.
+
+---
+
+### 검증 결과
+
+- inframodel-admin-web 저장소에 Lifecycle Policy 적용 확인
+- inframodel-service-web 저장소에 Lifecycle Policy 적용 확인
+- inframodel-was 저장소에 Lifecycle Policy 적용 확인
+- Lifecycle Policy Preview 실행 확인
+- 현재 저장소 내 이미지 수가 정책 기준(5개)을 초과하지 않아 삭제 대상(Expire)은 표시되지 않음
+
+---
+
+### 증적
+
+#### Admin Web Lifecycle Policy 설정
+
+![Admin Web Lifecycle Policy](image-8.png)
+
+#### Service Web Lifecycle Policy 설정
+
+![Service Web Lifecycle Policy](image-9.png)
+
+#### WAS Lifecycle Policy 설정
+
+![WAS Lifecycle Policy](image-10.png)
+
+#### Lifecycle Policy Preview 결과
+
+![Lifecycle Policy Preview](image-11.png)
+
+## 16. 정리
 
 로컬 이미지 정리:
 
