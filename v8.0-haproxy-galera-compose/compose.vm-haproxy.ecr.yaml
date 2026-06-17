@@ -1,0 +1,11 @@
+name: ${COMPOSE_PROJECT_NAME:-haproxy-galera-lb}
+
+services:
+  haproxy:
+    image: ${HAPROXY_IMAGE_URI:-haproxy:3.0-alpine}
+    container_name: haproxy-galera
+    hostname: haproxy
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./haproxy/haproxy.vm.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
