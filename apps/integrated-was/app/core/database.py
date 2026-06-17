@@ -49,6 +49,8 @@ async def initialize_database() -> None:
         await connection.run_sync(Base.metadata.create_all)
 
     async with WriteSessionFactory() as session:
+        await _ensure_user_status_column(session)
+
         admin_user = await session.scalar(
             select(User).where(User.username == settings.admin_username)
         )
@@ -124,4 +126,25 @@ async def _ensure_reservation_owner_column(
     )
     await session.execute(
         text("CREATE INDEX ix_reservations_user_id ON reservations (user_id)")
+    )
+
+
+async def _ensure_user_status_column(session: AsyncSession) -> None:
+    connection = await session.connection()
+
+    def has_status(sync_connection) -> bool:
+        inspector = inspect(sync_connection)
+        if not inspector.has_table("users"):
+            return True
+        columns = inspector.get_columns("users")
+        return any(column["name"] == "status" for column in columns)
+
+    if await connection.run_sync(has_status):
+        return
+
+    await session.execute(
+        text("ALTER TABLE users ADD COLUMN status VARCHAR(30) DEFAULT 'ACTIVE'")
+    )
+    await session.execute(
+        text("UPDATE users SET status = 'ACTIVE' WHERE status IS NULL")
     )

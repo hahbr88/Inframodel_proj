@@ -284,6 +284,79 @@ def test_demo_account_is_available_without_database() -> None:
     assert "access_token" in response.cookies
 
 
+def test_signup_creates_login_session() -> None:
+    with TestClient(app) as client:
+        signup_response = client.post(
+            "/api/auth/signup",
+            json={"username": "new-user", "password": "password123"},
+        )
+        reservations_response = client.get("/api/reservations")
+
+    assert signup_response.status_code == 201
+    assert "access_token" in signup_response.cookies
+    assert reservations_response.status_code == 200
+    assert reservations_response.json()["reservations"] == []
+
+
+def test_duplicate_signup_is_rejected() -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/auth/signup",
+            json={"username": "traveler", "password": "password123"},
+        )
+
+    assert response.status_code == 409
+
+
+def test_user_password_can_be_changed() -> None:
+    with TestClient(app) as client:
+        client.post(
+            "/api/auth/signup",
+            json={"username": "password-user", "password": "password123"},
+        )
+        change_response = client.patch(
+            "/api/auth/me/password",
+            json={
+                "current_password": "password123",
+                "new_password": "new-password123",
+            },
+        )
+        client.post("/api/auth/logout")
+        old_login_response = client.post(
+            "/api/auth/login",
+            json={"username": "password-user", "password": "password123"},
+        )
+        new_login_response = client.post(
+            "/api/auth/login",
+            json={"username": "password-user", "password": "new-password123"},
+        )
+
+    assert change_response.status_code == 200
+    assert old_login_response.status_code == 401
+    assert new_login_response.status_code == 200
+
+
+def test_user_account_can_be_deleted() -> None:
+    with TestClient(app) as client:
+        client.post(
+            "/api/auth/signup",
+            json={"username": "delete-user", "password": "password123"},
+        )
+        delete_response = client.request(
+            "DELETE",
+            "/api/auth/me",
+            json={"username": "delete-user", "password": "password123"},
+        )
+        login_response = client.post(
+            "/api/auth/login",
+            json={"username": "delete-user", "password": "password123"},
+        )
+
+    assert delete_response.status_code == 200
+    assert "access_token" not in delete_response.cookies
+    assert login_response.status_code == 401
+
+
 def test_unknown_course_is_rejected() -> None:
     with TestClient(app) as client:
         client.post(
