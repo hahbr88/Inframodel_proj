@@ -131,10 +131,10 @@ async def get_course_detail(
     tags=["Query"],
 )
 async def list_reservations(
-    _user_id: int = Depends(require_authenticated_user),
+    user_id: int = Depends(require_authenticated_user),
     service: ReservationQueryService = Depends(get_reservation_service),
 ) -> ReservationListResponse:
-    return await service.list_all()
+    return await service.list_all(user_id)
 
 
 @router.get(

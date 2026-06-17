@@ -32,7 +32,7 @@ class ReservationCommandService:
     def __init__(self, repository: CommandRepositoryPort):
         self.repository = repository
 
-    async def create(self, payload: ReservationCreate) -> int:
+    async def create(self, user_id: int, payload: ReservationCreate) -> int:
         if await self.repository.get_course(payload.course_id) is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -41,6 +41,7 @@ class ReservationCommandService:
         self._validate_future_date(payload.reservation_date)
         try:
             reservation = await self.repository.create_reservation(
+                user_id,
                 payload.course_id,
                 payload.reservation_date,
             )
@@ -54,12 +55,14 @@ class ReservationCommandService:
         self,
         reservation_id: int,
         payload: ReservationUpdate,
+        user_id: int | None = None,
     ) -> None:
         self._validate_future_date(payload.reservation_date)
         try:
             reservation = await self.repository.update_reservation_date(
                 reservation_id,
                 payload.reservation_date,
+                user_id,
             )
             if reservation is None:
                 raise HTTPException(
@@ -76,9 +79,12 @@ class ReservationCommandService:
             await self.repository.rollback()
             raise
 
-    async def cancel(self, reservation_id: int) -> None:
+    async def cancel(self, reservation_id: int, user_id: int | None = None) -> None:
         try:
-            reservation = await self.repository.cancel_reservation(reservation_id)
+            reservation = await self.repository.cancel_reservation(
+                reservation_id,
+                user_id,
+            )
             if reservation is None:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,

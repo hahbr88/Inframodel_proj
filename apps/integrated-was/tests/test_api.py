@@ -170,6 +170,86 @@ def test_cancelled_reservation_is_removed_from_my_reservations() -> None:
     assert reservation_id not in reservation_ids
 
 
+def test_reservations_are_scoped_to_authenticated_user() -> None:
+    with TestClient(app) as admin_client, TestClient(app) as traveler_client:
+        admin_client.post(
+            "/api/auth/login",
+            json={"username": "admin", "password": "password123"},
+        )
+        traveler_client.post(
+            "/api/auth/login",
+            json={"username": "traveler", "password": "password123"},
+        )
+
+        admin_create_response = admin_client.post(
+            "/api/reservations",
+            json={
+                "course_id": 1,
+                "reservation_date": (datetime.now() + timedelta(days=4)).isoformat(),
+            },
+        )
+        traveler_create_response = traveler_client.post(
+            "/api/reservations",
+            json={
+                "course_id": 52,
+                "reservation_date": (datetime.now() + timedelta(days=5)).isoformat(),
+            },
+        )
+
+        admin_reservation_id = admin_create_response.json()["reservation_id"]
+        traveler_reservation_id = traveler_create_response.json()["reservation_id"]
+
+        admin_list_response = admin_client.get("/api/reservations")
+        traveler_list_response = traveler_client.get("/api/reservations")
+
+    admin_ids = {item["id"] for item in admin_list_response.json()["reservations"]}
+    traveler_ids = {
+        item["id"] for item in traveler_list_response.json()["reservations"]
+    }
+
+    assert admin_create_response.status_code == 201
+    assert traveler_create_response.status_code == 201
+    assert admin_reservation_id in admin_ids
+    assert traveler_reservation_id not in admin_ids
+    assert traveler_reservation_id in traveler_ids
+    assert admin_reservation_id not in traveler_ids
+
+
+def test_reservation_owner_is_required_for_update_and_cancel() -> None:
+    with TestClient(app) as admin_client, TestClient(app) as traveler_client:
+        admin_client.post(
+            "/api/auth/login",
+            json={"username": "admin", "password": "password123"},
+        )
+        traveler_client.post(
+            "/api/auth/login",
+            json={"username": "traveler", "password": "password123"},
+        )
+
+        create_response = admin_client.post(
+            "/api/reservations",
+            json={
+                "course_id": 1,
+                "reservation_date": (datetime.now() + timedelta(days=6)).isoformat(),
+            },
+        )
+        reservation_id = create_response.json()["reservation_id"]
+
+        traveler_update_response = traveler_client.patch(
+            f"/api/reservations/{reservation_id}",
+            json={"reservation_date": (datetime.now() + timedelta(days=7)).isoformat()},
+        )
+        traveler_cancel_response = traveler_client.delete(
+            f"/api/reservations/{reservation_id}"
+        )
+        admin_cancel_response = admin_client.delete(f"/api/reservations/{reservation_id}")
+
+    assert create_response.status_code == 201
+    assert traveler_update_response.status_code == 404
+    assert traveler_cancel_response.status_code == 404
+    assert admin_cancel_response.status_code == 200
+
+
 def test_past_reservation_date_is_rejected() -> None:
     with TestClient(app) as client:
         client.post(
