@@ -3,9 +3,11 @@ from fastapi import APIRouter, Depends, Response, status
 from app.commands.schemas import (
     CommandResponse,
     LoginRequest,
+    PasswordChangeRequest,
     ReservationCreate,
     ReservationCreatedResponse,
     ReservationUpdate,
+    SignupRequest,
 )
 from app.commands.services import AuthCommandService, ReservationCommandService
 from app.core.config import settings
@@ -46,6 +48,29 @@ async def login(
     return CommandResponse(message="Login succeeded")
 
 
+@router.post(
+    "/auth/signup",
+    response_model=CommandResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Command"],
+)
+async def signup(
+    payload: SignupRequest,
+    response: Response,
+    service: AuthCommandService = Depends(get_auth_service),
+) -> CommandResponse:
+    token = await service.signup(payload)
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+        max_age=settings.jwt_expire_minutes * 60,
+    )
+    return CommandResponse(message="Signup succeeded")
+
+
 @router.post("/auth/logout", response_model=CommandResponse, tags=["Command"])
 async def logout(response: Response) -> CommandResponse:
     response.delete_cookie(
@@ -55,6 +80,33 @@ async def logout(response: Response) -> CommandResponse:
         samesite="lax",
     )
     return CommandResponse(message="Logout succeeded")
+
+
+@router.patch("/auth/me/password", response_model=CommandResponse, tags=["Command"])
+async def change_password(
+    payload: PasswordChangeRequest,
+    user_id: int = Depends(require_authenticated_user),
+    service: AuthCommandService = Depends(get_auth_service),
+) -> CommandResponse:
+    await service.change_password(user_id, payload)
+    return CommandResponse(message="Password was changed")
+
+
+@router.delete("/auth/me", response_model=CommandResponse, tags=["Command"])
+async def delete_account(
+    payload: LoginRequest,
+    response: Response,
+    user_id: int = Depends(require_authenticated_user),
+    service: AuthCommandService = Depends(get_auth_service),
+) -> CommandResponse:
+    await service.delete_account(user_id, payload)
+    response.delete_cookie(
+        key="access_token",
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+    )
+    return CommandResponse(message="Account was deleted")
 
 
 @router.post(

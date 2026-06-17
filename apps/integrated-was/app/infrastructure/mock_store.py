@@ -18,6 +18,7 @@ class MockUser:
     id: int
     username: str
     password_hash: str
+    status: str = "ACTIVE"
 
 
 @dataclass
@@ -100,13 +101,53 @@ class MockStore:
     def next_reservation_id(self) -> int:
         return max(self.reservations, default=0) + 1
 
+    def next_user_id(self) -> int:
+        return max((user.id for user in self.users.values()), default=0) + 1
+
 
 class MockCommandRepository:
     def __init__(self, store: MockStore):
         self.store = store
 
     async def get_user_by_username(self, username: str) -> MockUser | None:
-        return self.store.users.get(username)
+        user = self.store.users.get(username)
+        if user is None or user.status != "ACTIVE":
+            return None
+        return user
+
+    async def get_user(self, user_id: int) -> MockUser | None:
+        for user in self.store.users.values():
+            if user.id == user_id and user.status == "ACTIVE":
+                return user
+        return None
+
+    async def create_user(self, username: str, password_hash: str) -> MockUser:
+        user = MockUser(
+            id=self.store.next_user_id(),
+            username=username,
+            password_hash=password_hash,
+        )
+        self.store.users[user.username] = user
+        return user
+
+    async def update_user_password(
+        self,
+        user_id: int,
+        password_hash: str,
+    ) -> MockUser | None:
+        user = await self.get_user(user_id)
+        if user is not None:
+            user.password_hash = password_hash
+        return user
+
+    async def deactivate_user(self, user_id: int) -> MockUser | None:
+        user = await self.get_user(user_id)
+        if user is not None:
+            self.store.users.pop(user.username, None)
+            user.status = "DELETED"
+            user.username = f"deleted:{user.id}:{user.username}"
+            self.store.users[user.username] = user
+        return user
 
     async def get_course(self, course_id: int) -> CatalogCourse | None:
         self.store.refresh_course_metadata()

@@ -14,9 +14,51 @@ class CommandRepository:
 
     async def get_user_by_username(self, username: str) -> User | None:
         result = await self.session.execute(
-            select(User).where(User.username == username)
+            select(User).where(
+                User.username == username,
+                User.status == "ACTIVE",
+            )
         )
         return result.scalar_one_or_none()
+
+    async def get_user(self, user_id: int) -> User | None:
+        result = await self.session.execute(
+            select(User).where(
+                User.id == user_id,
+                User.status == "ACTIVE",
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def create_user(self, username: str, password_hash: str) -> User:
+        user = User(
+            username=username,
+            password_hash=password_hash,
+            status="ACTIVE",
+        )
+        self.session.add(user)
+        await self.session.flush()
+        await self.session.refresh(user)
+        return user
+
+    async def update_user_password(
+        self,
+        user_id: int,
+        password_hash: str,
+    ) -> User | None:
+        user = await self.get_user(user_id)
+        if user is not None:
+            user.password_hash = password_hash
+            await self.session.flush()
+        return user
+
+    async def deactivate_user(self, user_id: int) -> User | None:
+        user = await self.get_user(user_id)
+        if user is not None:
+            user.status = "DELETED"
+            user.username = f"deleted:{user.id}:{user.username}"
+            await self.session.flush()
+        return user
 
     async def get_course(self, course_id: int) -> Course | None:
         return await self.session.get(Course, course_id)

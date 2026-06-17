@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     data_mode: Literal["mock", "database"] = "mock"
     weather_mode: Literal["mock", "snapshot", "database", "live"] = "mock"
     weather_storage: Literal["json", "database"] = "json"
+    account_provider: Literal["local", "cognito"] = "local"
+    cognito_region: str = "ap-northeast-2"
+    cognito_user_pool_id: str = ""
+    cognito_client_id: str = ""
     weather_database_batch_size: int = 1000
     weather_snapshot_retention: int = 3
     write_database_url: str = "sqlite+aiosqlite:///./integrated_was.db"
