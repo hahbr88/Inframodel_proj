@@ -1,6 +1,0 @@
-[mariadbd]
-server_id=1
-wsrep_node_name=galera-node1
-wsrep_node_address=172.30.0.11
-wsrep_sst_receive_address=172.30.0.11:4444
-read_only=OFF
