@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 💡 [필수 수정] compose.yaml 파일이 있는 도커 배포 디렉토리 경로로 이동합니다.
-cd /home/docker/Inframodel_proj/deploy/app
+cd /app
 
 # ================= 설정 구간 =================
 SVC1_NAME="service-web"
