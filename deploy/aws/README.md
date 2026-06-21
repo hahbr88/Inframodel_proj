@@ -306,14 +306,24 @@ aws ssm put-parameter --region ap-northeast-2 --overwrite \
   --value v1.0
 
 aws ssm put-parameter --region ap-northeast-2 --overwrite \
-  --name /inframodel/prod/app/db-host \
+  --name /inframodel/prod/app/db-write-host \
   --type String \
-  --value 10.0.20.10
+  --value '<haproxy-or-nlb-endpoint>'
 
 aws ssm put-parameter --region ap-northeast-2 --overwrite \
-  --name /inframodel/prod/app/db-port \
+  --name /inframodel/prod/app/db-write-port \
   --type String \
   --value 3306
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/app/db-read-host \
+  --type String \
+  --value '<haproxy-or-nlb-endpoint>'
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/app/db-read-port \
+  --type String \
+  --value 3307
 
 aws ssm put-parameter --region ap-northeast-2 --overwrite \
   --name /inframodel/prod/app/db-name \
