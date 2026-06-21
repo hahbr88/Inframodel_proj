@@ -4,7 +4,7 @@ set -euxo pipefail
 export DEBIAN_FRONTEND=noninteractive
 
 apt-get update
-apt-get install -y ca-certificates curl git unzip
+apt-get install -y ca-certificates curl git unzip awscli
 
 install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
@@ -32,8 +32,8 @@ apt-get install -y \
 systemctl enable --now docker
 usermod -aG docker ubuntu || true
 
-mkdir -p /opt/inframodel
-chown -R ubuntu:ubuntu /opt/inframodel
+mkdir -p /app
+chown -R ubuntu:ubuntu /app
 
 docker --version
 docker compose version

@@ -1,0 +1,74 @@
+name: Upload AWS Deploy Artifacts to S3
+
+on:
+  push:
+    branches:
+      - aws-ecr
+    paths:
+      - deploy/aws/db/compose.galera.yaml
+      - deploy/aws/db/compose.haproxy.yaml
+      - deploy/aws/db/Dockerfile.galera
+      - deploy/aws/db/docker-entrypoint-galera.sh
+      - deploy/aws/db/initdb-create-users.sh
+      - deploy/aws/db/config/vm/60-galera-common.cnf
+      - deploy/aws/app/compose.yaml
+      - deploy/aws/web/compose.yaml
+      - deploy/aws/web/gateway/default.conf.template
+      - .github/workflows/deploy-aws-artifacts.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: ap-northeast-2
+  S3_PREFIX: inframodel/prod
+
+jobs:
+  upload:
+    name: Upload compose artifacts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload Galera DB artifacts
+        run: |
+          aws s3 cp deploy/aws/db/compose.galera.yaml \
+            "s3://${{ secrets.AWS_ARTIFACT_BUCKET }}/${S3_PREFIX}/db/compose.galera.yaml"
+          aws s3 cp deploy/aws/db/Dockerfile.galera \
+            "s3://${{ secrets.AWS_ARTIFACT_BUCKET }}/${S3_PREFIX}/db/Dockerfile.galera"
+          aws s3 cp deploy/aws/db/docker-entrypoint-galera.sh \
+            "s3://${{ secrets.AWS_ARTIFACT_BUCKET }}/${S3_PREFIX}/db/docker-entrypoint-galera.sh"
+          aws s3 cp deploy/aws/db/initdb-create-users.sh \
+            "s3://${{ secrets.AWS_ARTIFACT_BUCKET }}/${S3_PREFIX}/db/initdb-create-users.sh"
+          aws s3 cp deploy/aws/db/config/vm/60-galera-common.cnf \
+            "s3://${{ secrets.AWS_ARTIFACT_BUCKET }}/${S3_PREFIX}/db/config/vm/60-galera-common.cnf"
+
+      - name: Upload HAProxy DB artifacts
+        run: |
+          aws s3 cp deploy/aws/db/compose.haproxy.yaml \
+            "s3://${{ secrets.AWS_ARTIFACT_BUCKET }}/${S3_PREFIX}/db/compose.haproxy.yaml"
+
+      - name: Upload App compose
+        run: |
+          aws s3 cp deploy/aws/app/compose.yaml \
+            "s3://${{ secrets.AWS_ARTIFACT_BUCKET }}/${S3_PREFIX}/app/compose.yaml"
+
+      - name: Upload Web compose
+        run: |
+          aws s3 cp deploy/aws/web/compose.yaml \
+            "s3://${{ secrets.AWS_ARTIFACT_BUCKET }}/${S3_PREFIX}/web/compose.yaml"
+
+      - name: Upload Web gateway template
+        run: |
+          aws s3 cp deploy/aws/web/gateway/default.conf.template \
+            "s3://${{ secrets.AWS_ARTIFACT_BUCKET }}/${S3_PREFIX}/web/gateway/default.conf.template"

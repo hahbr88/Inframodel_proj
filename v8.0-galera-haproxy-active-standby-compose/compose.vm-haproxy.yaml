@@ -1,0 +1,11 @@
+name: ${COMPOSE_PROJECT_NAME:?Set COMPOSE_PROJECT_NAME in .env}
+
+services:
+  haproxy:
+    image: haproxy:3.0-alpine
+    container_name: haproxy-galera
+    hostname: ${HAPROXY_NODE_NAME:-haproxy}
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./haproxy/haproxy.active-standby.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
