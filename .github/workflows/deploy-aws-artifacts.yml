@@ -5,7 +5,12 @@ on:
     branches:
       - aws-ecr
     paths:
-      - deploy/aws/db/compose.yaml
+      - deploy/aws/db/compose.galera.yaml
+      - deploy/aws/db/compose.haproxy.yaml
+      - deploy/aws/db/Dockerfile.galera
+      - deploy/aws/db/docker-entrypoint-galera.sh
+      - deploy/aws/db/initdb-create-users.sh
+      - deploy/aws/db/config/vm/60-galera-common.cnf
       - deploy/aws/app/compose.yaml
       - deploy/aws/web/compose.yaml
       - deploy/aws/web/gateway/default.conf.template
@@ -35,10 +40,23 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Upload DB compose
+      - name: Upload Galera DB artifacts
         run: |
-          aws s3 cp deploy/aws/db/compose.yaml \
-            "s3://${{ secrets.AWS_ARTIFACT_BUCKET }}/${S3_PREFIX}/db/compose.yaml"
+          aws s3 cp deploy/aws/db/compose.galera.yaml \
+            "s3://${{ secrets.AWS_ARTIFACT_BUCKET }}/${S3_PREFIX}/db/compose.galera.yaml"
+          aws s3 cp deploy/aws/db/Dockerfile.galera \
+            "s3://${{ secrets.AWS_ARTIFACT_BUCKET }}/${S3_PREFIX}/db/Dockerfile.galera"
+          aws s3 cp deploy/aws/db/docker-entrypoint-galera.sh \
+            "s3://${{ secrets.AWS_ARTIFACT_BUCKET }}/${S3_PREFIX}/db/docker-entrypoint-galera.sh"
+          aws s3 cp deploy/aws/db/initdb-create-users.sh \
+            "s3://${{ secrets.AWS_ARTIFACT_BUCKET }}/${S3_PREFIX}/db/initdb-create-users.sh"
+          aws s3 cp deploy/aws/db/config/vm/60-galera-common.cnf \
+            "s3://${{ secrets.AWS_ARTIFACT_BUCKET }}/${S3_PREFIX}/db/config/vm/60-galera-common.cnf"
+
+      - name: Upload HAProxy DB artifacts
+        run: |
+          aws s3 cp deploy/aws/db/compose.haproxy.yaml \
+            "s3://${{ secrets.AWS_ARTIFACT_BUCKET }}/${S3_PREFIX}/db/compose.haproxy.yaml"
 
       - name: Upload App compose
         run: |
