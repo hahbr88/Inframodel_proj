@@ -1,6 +1,0 @@
-[mariadbd]
-server_id=1
-wsrep_node_name=db1
-wsrep_node_address=192.168.100.30
-wsrep_sst_receive_address=192.168.100.30:4444
-read_only=OFF
