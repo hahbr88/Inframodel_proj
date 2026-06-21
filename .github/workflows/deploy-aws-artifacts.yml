@@ -1,0 +1,56 @@
+name: Upload AWS Deploy Artifacts to S3
+
+on:
+  push:
+    branches:
+      - aws-ecr
+    paths:
+      - deploy/aws/db/compose.yaml
+      - deploy/aws/app/compose.yaml
+      - deploy/aws/web/compose.yaml
+      - deploy/aws/web/gateway/default.conf.template
+      - .github/workflows/deploy-aws-artifacts.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: ap-northeast-2
+  S3_PREFIX: inframodel/prod
+
+jobs:
+  upload:
+    name: Upload compose artifacts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload DB compose
+        run: |
+          aws s3 cp deploy/aws/db/compose.yaml \
+            "s3://${{ secrets.AWS_ARTIFACT_BUCKET }}/${S3_PREFIX}/db/compose.yaml"
+
+      - name: Upload App compose
+        run: |
+          aws s3 cp deploy/aws/app/compose.yaml \
+            "s3://${{ secrets.AWS_ARTIFACT_BUCKET }}/${S3_PREFIX}/app/compose.yaml"
+
+      - name: Upload Web compose
+        run: |
+          aws s3 cp deploy/aws/web/compose.yaml \
+            "s3://${{ secrets.AWS_ARTIFACT_BUCKET }}/${S3_PREFIX}/web/compose.yaml"
+
+      - name: Upload Web gateway template
+        run: |
+          aws s3 cp deploy/aws/web/gateway/default.conf.template \
+            "s3://${{ secrets.AWS_ARTIFACT_BUCKET }}/${S3_PREFIX}/web/gateway/default.conf.template"

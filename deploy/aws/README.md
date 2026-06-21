@@ -178,10 +178,13 @@ aws ecr list-images --repository-name inframodel-was
 
 ## 7. EC2 생성과 User Data
 
-App EC2와 DB EC2 모두 Ubuntu 24.04 기준으로 생성한다.
+Web EC2, App/WAS EC2, DB EC2 모두 Ubuntu 24.04 기준으로 생성한다.
 
 EC2 생성 시 User Data에 `user-data.sh` 내용을 입력하면 Docker Engine과 Docker
 Compose Plugin 설치를 자동화할 수 있다.
+
+작업 디렉터리는 모든 EC2에서 `/app`으로 통일한다. 기존 `~/inframodel-*`,
+`/opt/inframodel` 경로는 사용하지 않는다.
 
 EC2 접속 후 확인:
 
@@ -191,34 +194,81 @@ docker compose version
 systemctl status docker --no-pager
 ```
 
-App EC2에는 ECR Pull 권한이 있는 IAM Role을 연결한다.
+Web EC2와 App/WAS EC2에는 ECR Pull 권한이 있는 IAM Role을 연결한다.
+SSM Parameter Store에서 설정을 읽는 인스턴스에는 다음 권한도 필요하다.
 
-## 8. DB EC2 배포
+- `ssm:GetParameter`
+- `s3:GetObject`
+- SecureString을 고객 관리형 KMS 키로 암호화한 경우 해당 키의 `kms:Decrypt`
 
-DB EC2에서 작업 디렉터리를 준비한다.
+## 8. 배포 아티팩트 S3 업로드
 
-```bash
-mkdir -p ~/inframodel-db
-cd ~/inframodel-db
+GitHub Actions는 다음 파일을 S3에 업로드한다.
+
+```text
+deploy/aws/db/compose.yaml -> s3://<bucket>/inframodel/prod/db/compose.yaml
+deploy/aws/app/compose.yaml -> s3://<bucket>/inframodel/prod/app/compose.yaml
+deploy/aws/web/compose.yaml -> s3://<bucket>/inframodel/prod/web/compose.yaml
+deploy/aws/web/gateway/default.conf.template -> s3://<bucket>/inframodel/prod/web/gateway/default.conf.template
 ```
 
-`deploy/aws/db/compose.yaml`과 `deploy/aws/db/.env.example`을 배치한 뒤 `.env`를
-작성한다.
+GitHub repository secrets:
+
+- `AWS_ROLE_TO_ASSUME`: GitHub Actions OIDC로 AssumeRole 할 AWS IAM Role ARN
+- `AWS_ARTIFACT_BUCKET`: compose와 Nginx template을 저장할 S3 버킷 이름
+
+워크플로 파일은 `.github/workflows/deploy-aws-artifacts.yml`이다. `aws-ecr`
+브랜치에 push하거나 수동 실행하면 S3 파일이 갱신된다.
+
+## 9. DB EC2 배포
+
+DB EC2는 User Data가 `/app`을 만들고 S3에서 compose 파일을 내려받는다.
+
+`.env`는 직접 작성하지 않고 User Data가 SSM Parameter Store에서 값을 읽어
+`/app/.env`로 생성한다.
+
+SSM 파라미터 예시는 다음과 같다. 비밀번호성 값은 `SecureString`으로 저장한다.
 
 ```bash
-cp .env.example .env
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/db/artifact-bucket \
+  --type String \
+  --value '<artifact-bucket>'
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/db/db-bind-ip \
+  --type String \
+  --value 0.0.0.0
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/db/mariadb-database \
+  --type String \
+  --value integrated
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/db/mariadb-user \
+  --type String \
+  --value app
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/db/mariadb-password \
+  --type SecureString \
+  --value '<db-password>'
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/db/mariadb-root-password \
+  --type SecureString \
+  --value '<db-root-password>'
 ```
 
-`.env`에서 다음 값을 변경한다.
+EC2 User Data에는 `deploy/aws/db/user-data.sh`를 사용한다. 기본 SSM prefix는
+`/inframodel/prod/db`이다.
 
-- `MARIADB_PASSWORD`
-- `MARIADB_ROOT_PASSWORD`
-
-실행:
+부팅 후 확인:
 
 ```bash
+cd /app
 docker compose --env-file .env config
-docker compose --env-file .env up -d
 docker compose ps
 ```
 
@@ -228,78 +278,146 @@ DB EC2 private IP를 기록한다. 예:
 10.0.20.10
 ```
 
-## 9. App EC2 배포
+## 10. App/WAS EC2 배포
 
-App EC2에서 작업 디렉터리를 준비한다.
+App/WAS EC2는 FastAPI WAS와 Redis만 실행한다. Web 정적 프런트와 외부 Nginx
+Gateway는 `deploy/aws/web`에서 실행한다.
 
-```bash
-mkdir -p ~/inframodel-app
-cd ~/inframodel-app
-```
+App/WAS EC2는 User Data가 `/app`을 만들고 S3에서 compose 파일을 내려받는다.
+`.env`는 직접 작성하지 않고 User Data가 SSM Parameter Store에서 값을 읽어
+`/app/.env`로 생성한다.
 
-`deploy/aws/app/compose.yaml`, `deploy/aws/app/.env.example`,
-`deploy/aws/app/gateway/`를 배치한 뒤 `.env`를 작성한다.
-
-```bash
-cp .env.example .env
-```
-
-`.env`에서 다음 값을 변경한다.
-
-- `ECR_REGISTRY`
-- `IMAGE_TAG`
-- `DB_PRIVATE_HOST`
-- `DB_PASSWORD`
-- `WRITE_DATABASE_URL`
-- `READ_DATABASE_URL`
-- `JWT_SECRET`
-- `ADMIN_PASSWORD`
-- `CORS_ORIGINS`
-- `COOKIE_SECURE`
-- `KMA_SERVICE_KEY`
-
-DB URL 예시:
-
-```dotenv
-WRITE_DATABASE_URL=mysql+asyncmy://app:<DB_PASSWORD>@10.0.20.10:3306/integrated
-READ_DATABASE_URL=mysql+asyncmy://app:<DB_PASSWORD>@10.0.20.10:3306/integrated
-```
-
-CloudFront와 ACM으로 HTTPS 도메인을 사용할 경우 다음처럼 설정한다.
-
-```dotenv
-CORS_ORIGINS=https://www.example.com
-COOKIE_SECURE=true
-```
-
-ECR 로그인:
+SSM 파라미터 예시는 다음과 같다. 비밀번호성 값은 `SecureString`으로 저장한다.
 
 ```bash
-aws ecr get-login-password --region ap-northeast-2 \
-  | docker login --username AWS --password-stdin "$ECR_REGISTRY"
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/app/artifact-bucket \
+  --type String \
+  --value '<artifact-bucket>'
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/app/ecr-registry \
+  --type String \
+  --value 123456789012.dkr.ecr.ap-northeast-2.amazonaws.com
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/app/image-tag \
+  --type String \
+  --value v1.0
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/app/db-host \
+  --type String \
+  --value 10.0.20.10
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/app/db-port \
+  --type String \
+  --value 3306
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/app/db-name \
+  --type String \
+  --value integrated
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/app/db-user \
+  --type String \
+  --value app
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/app/db-password \
+  --type SecureString \
+  --value '<db-password>'
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/app/jwt-secret \
+  --type SecureString \
+  --value '<jwt-secret-at-least-32-characters>'
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/app/admin-password \
+  --type SecureString \
+  --value '<admin-password>'
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/app/cors-origins \
+  --type String \
+  --value 'https://www.example.com'
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/app/kma-service-key \
+  --type SecureString \
+  --value '<kma-service-key>'
 ```
 
-실행:
+EC2 User Data에는 `deploy/aws/app/user-data.sh`를 사용한다. 기본 SSM prefix는
+`/inframodel/prod/app`이며, 다른 prefix를 쓰려면 User Data 상단에서
+`SSM_PREFIX`를 바꾼다.
+
+부팅 후 확인:
 
 ```bash
-docker compose --env-file .env config
-docker compose --env-file .env pull
-docker compose --env-file .env up -d
-docker compose ps
+cd /app
+sudo test -f .env
+docker compose --env-file .env ps
+docker compose logs --tail=50 was
+curl -i http://127.0.0.1:8000/
 ```
 
-접속 확인:
+## 11. Web EC2 배포
+
+Web EC2는 Nginx Gateway, service-web, admin-web만 실행한다. `/api/` 요청은
+App/WAS EC2의 private IP와 8000 포트로 프록시한다.
+
+Web EC2는 User Data가 `/app`을 만들고 S3에서 compose 파일과 Nginx template을
+내려받는다. `.env`는 User Data가 SSM에서 읽어 생성한다.
+
+SSM 파라미터 예시는 다음과 같다.
 
 ```bash
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/web/artifact-bucket \
+  --type String \
+  --value '<artifact-bucket>'
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/web/ecr-registry \
+  --type String \
+  --value 123456789012.dkr.ecr.ap-northeast-2.amazonaws.com
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/web/image-tag \
+  --type String \
+  --value v1.0
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/web/was-upstream-host \
+  --type String \
+  --value 10.0.30.10
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/web/was-upstream-port \
+  --type String \
+  --value 8000
+```
+
+EC2 User Data에는 `deploy/aws/web/user-data.sh`를 사용한다.
+
+부팅 후 확인:
+
+```bash
+cd /app
+docker compose --env-file .env ps
 curl -i http://127.0.0.1/health
 curl -I http://127.0.0.1/
 curl -I http://127.0.0.1/admin/
 curl -s http://127.0.0.1/api/course-catalog | head
 ```
 
-## 10. CloudFront, ACM, Route 53 검증
+## 12. CloudFront, ACM, Route 53 검증
 
-CloudFront를 외부 HTTPS 진입점으로 사용한다. App EC2는 CloudFront origin으로
+CloudFront를 외부 HTTPS 진입점으로 사용한다. Web EC2는 CloudFront origin으로
 동작하고, 사용자는 Route 53 도메인으로 CloudFront에 접속한다.
 
 ACM 인증서 주의사항:
@@ -311,7 +429,7 @@ CloudFront 설정 기준:
 
 | 항목 | 값 |
 |---|---|
-| Origin domain | App EC2 Public DNS 또는 Elastic IP 기반 도메인 |
+| Origin domain | Web EC2 Public DNS 또는 Elastic IP 기반 도메인 |
 | Origin protocol | HTTP |
 | Viewer protocol policy | Redirect HTTP to HTTPS |
 | Alternate domain name | 실제 서비스 도메인 |
@@ -332,9 +450,9 @@ curl -s https://<도메인>/api/course-catalog | head
 ```
 
 발표에서는 “HTTPS 인증서는 ACM으로 관리하고, CloudFront가 외부 HTTPS 요청을
-받아 App EC2 origin으로 전달한다”고 설명한다.
+받아 Web EC2 origin으로 전달한다”고 설명한다.
 
-## 11. 롤백 전략
+## 13. 롤백 전략
 
 새 버전 `v1.1` 배포 후 문제가 생기면 App EC2의 `.env`에서 `IMAGE_TAG`를 이전
 정상 버전으로 되돌린다.
@@ -355,7 +473,7 @@ docker compose logs --tail=50 was
 발표에서는 “새 버전 장애 시 이전 이미지 태그로 되돌려 재배포할 수 있다”고
 설명한다.
 
-## 12. 운영 상태 확인
+## 14. 운영 상태 확인
 
 ```bash
 docker compose ps
