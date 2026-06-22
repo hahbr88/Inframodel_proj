@@ -61,6 +61,7 @@ class CognitoAccountProvider:
         self._client_error = ClientError
 
     def create_user(self, username: str, password: str) -> str:
+        created_username: str | None = None
         try:
             response = self._client.admin_create_user(
                 UserPoolId=settings.cognito_user_pool_id,
@@ -68,13 +69,16 @@ class CognitoAccountProvider:
                 UserAttributes=self._user_attributes(username),
                 MessageAction="SUPPRESS",
             )
+            created_username = response["User"].get("Username", username)
             self._client.admin_set_user_password(
                 UserPoolId=settings.cognito_user_pool_id,
-                Username=username,
+                Username=created_username,
                 Password=password,
                 Permanent=True,
             )
         except self._client_error as exc:
+            if created_username is not None:
+                self._delete_created_user(created_username)
             self._raise_cognito_error(exc)
         attributes = response["User"].get("Attributes", [])
         sub = next(
@@ -95,6 +99,15 @@ class CognitoAccountProvider:
             {"Name": "email", "Value": username},
             {"Name": "email_verified", "Value": "true"},
         ]
+
+    def _delete_created_user(self, username: str) -> None:
+        try:
+            self._client.admin_delete_user(
+                UserPoolId=settings.cognito_user_pool_id,
+                Username=username,
+            )
+        except self._client_error:
+            pass
 
     def authenticate(self, username: str, password: str) -> None:
         try:
