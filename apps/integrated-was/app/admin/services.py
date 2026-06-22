@@ -22,11 +22,14 @@ class AdminAuthService:
 
     async def login(self, payload: LoginRequest) -> str:
         user = await self.repository.get_user_by_username(payload.username)
-        if (
-            user is None
-            or not verify_password(payload.password, user.password_hash)
-            or getattr(user, "role", "USER") != "ADMIN"
-        ):
+        if user is None or getattr(user, "role", "USER") != "ADMIN":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid administrator credentials",
+            )
+        if settings.account_provider == "cognito":
+            get_account_provider().authenticate(payload.username, payload.password)
+        elif not verify_password(payload.password, user.password_hash):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid administrator credentials",

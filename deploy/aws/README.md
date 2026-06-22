@@ -428,6 +428,26 @@ aws ssm put-parameter --region ap-northeast-2 --overwrite \
   --value '<admin-password>'
 
 aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/app/account-provider \
+  --type String \
+  --value local
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/app/cognito-region \
+  --type String \
+  --value ap-northeast-2
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/app/cognito-user-pool-id \
+  --type String \
+  --value ''
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/app/cognito-client-id \
+  --type String \
+  --value ''
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
   --name /inframodel/prod/app/cors-origins \
   --type String \
   --value 'https://www.example.com'

@@ -99,6 +99,30 @@ def test_admin_login_dashboard_reservations_and_courses() -> None:
     assert courses_response.json()["count"] == 2
 
 
+def test_admin_login_uses_cognito_when_enabled(monkeypatch) -> None:
+    calls: list[tuple[str, str]] = []
+
+    class FakeAccountProvider:
+        def authenticate(self, username: str, password: str) -> None:
+            calls.append((username, password))
+
+    monkeypatch.setattr(settings, "account_provider", "cognito")
+    monkeypatch.setattr(
+        "app.admin.services.get_account_provider",
+        lambda: FakeAccountProvider(),
+    )
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/admin/auth/login",
+            json={"username": "admin", "password": "cognito-password"},
+        )
+
+    assert response.status_code == 200
+    assert "admin_access_token" in response.cookies
+    assert calls == [("admin", "cognito-password")]
+
+
 def test_admin_reservations_include_owner() -> None:
     with TestClient(app) as client:
         client.post(

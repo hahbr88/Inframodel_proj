@@ -47,6 +47,23 @@ ssm() {
     --output text
 }
 
+ssm_optional() {
+  local name="$1"
+  local fallback="$2"
+  local value
+
+  if value="$(aws ssm get-parameter \
+    --region "$AWS_REGION" \
+    --name "$name" \
+    --with-decryption \
+    --query 'Parameter.Value' \
+    --output text 2>/dev/null)"; then
+    printf '%s\n' "$value"
+  else
+    printf '%s\n' "$fallback"
+  fi
+}
+
 urlencode() {
   python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$1"
 }
@@ -69,6 +86,10 @@ JWT_SECRET="$(ssm "$SSM_PREFIX/jwt-secret")"
 ADMIN_PASSWORD="$(ssm "$SSM_PREFIX/admin-password")"
 CORS_ORIGINS="$(ssm "$SSM_PREFIX/cors-origins")"
 KMA_SERVICE_KEY="$(ssm "$SSM_PREFIX/kma-service-key")"
+ACCOUNT_PROVIDER="$(ssm_optional "$SSM_PREFIX/account-provider" "local")"
+COGNITO_REGION="$(ssm_optional "$SSM_PREFIX/cognito-region" "$AWS_REGION")"
+COGNITO_USER_POOL_ID="$(ssm_optional "$SSM_PREFIX/cognito-user-pool-id" "")"
+COGNITO_CLIENT_ID="$(ssm_optional "$SSM_PREFIX/cognito-client-id" "")"
 DB_USER_URL="$(urlencode "$DB_USER")"
 DB_PASSWORD_URL="$(urlencode "$DB_PASSWORD")"
 DB_NAME_URL="$(urlencode "$DB_NAME")"
@@ -91,10 +112,10 @@ READ_DATABASE_URL=mysql+asyncmy://$DB_USER_URL:$DB_PASSWORD_URL@$DB_READ_HOST:$D
 
 REDIS_URL=redis://redis:6379/0
 JWT_SECRET=$JWT_SECRET
-ACCOUNT_PROVIDER=local
-COGNITO_REGION=ap-northeast-2
-COGNITO_USER_POOL_ID=
-COGNITO_CLIENT_ID=
+ACCOUNT_PROVIDER=$ACCOUNT_PROVIDER
+COGNITO_REGION=$COGNITO_REGION
+COGNITO_USER_POOL_ID=$COGNITO_USER_POOL_ID
+COGNITO_CLIENT_ID=$COGNITO_CLIENT_ID
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=$ADMIN_PASSWORD
 CORS_ORIGINS=$CORS_ORIGINS
