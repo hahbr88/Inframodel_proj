@@ -65,6 +65,7 @@ class CognitoAccountProvider:
             response = self._client.admin_create_user(
                 UserPoolId=settings.cognito_user_pool_id,
                 Username=username,
+                UserAttributes=self._user_attributes(username),
                 MessageAction="SUPPRESS",
             )
             self._client.admin_set_user_password(
@@ -85,6 +86,15 @@ class CognitoAccountProvider:
             username,
         )
         return sub
+
+    @staticmethod
+    def _user_attributes(username: str) -> list[dict[str, str]]:
+        if "@" not in username:
+            return []
+        return [
+            {"Name": "email", "Value": username},
+            {"Name": "email_verified", "Value": "true"},
+        ]
 
     def authenticate(self, username: str, password: str) -> None:
         try:
@@ -142,6 +152,16 @@ class CognitoAccountProvider:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid username or password",
+            ) from exc
+        if code == "InvalidPasswordException":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password does not conform to policy",
+            ) from exc
+        if code == "InvalidParameterException":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid account request",
             ) from exc
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,

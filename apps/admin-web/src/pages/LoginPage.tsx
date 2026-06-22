@@ -18,6 +18,8 @@ import { adminLogin } from '../api/auth';
 import { getApiErrorMessage } from '../api/client';
 import { useAdminAuth } from '../context/adminAuth';
 
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -26,11 +28,14 @@ export function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const form = useForm({
     initialValues: {
-      username: 'admin',
+      username: '',
       password: '',
     },
     validate: {
-      username: (value) => (!value ? '아이디를 입력해 주세요.' : null),
+      username: (value) =>
+        emailPattern.test(value.trim())
+          ? null
+          : '관리자 이메일을 입력해 주세요.',
       password: (value) =>
         value.length < 8 ? '비밀번호는 8자 이상이어야 합니다.' : null,
     },
@@ -73,8 +78,9 @@ export function LoginPage() {
               </Alert>
             )}
             <TextInput
-              label="관리자 아이디"
-              placeholder="admin"
+              label="관리자 이메일"
+              placeholder="admin@tripkey.local"
+              autoComplete="email"
               {...form.getInputProps('username')}
             />
             <PasswordInput
