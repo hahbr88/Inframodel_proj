@@ -7,6 +7,10 @@ AWS 단계에서는 Web EC2, App/WAS EC2, DB EC2를 분리한다. Web EC2는
 CloudFront의 origin 역할을 하고, App/WAS EC2와 DB/HAProxy EC2는 Private
 Subnet에서 내부 요청만 받는다. 외부 HTTPS 접속은 CloudFront와 ACM 인증서로
 처리한다.
+AWS 단계에서는 Web EC2, App/WAS EC2, DB EC2를 분리한다. Web EC2는
+CloudFront의 origin 역할을 하고, App/WAS EC2와 DB/HAProxy EC2는 Private
+Subnet에서 내부 요청만 받는다. 외부 HTTPS 접속은 CloudFront와 ACM 인증서로
+처리한다.
 
 ## 1. 목표 구조
 
@@ -426,6 +430,26 @@ aws ssm put-parameter --region ap-northeast-2 --overwrite \
   --name /inframodel/prod/app/admin-password \
   --type SecureString \
   --value '<admin-password>'
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/app/account-provider \
+  --type String \
+  --value local
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/app/cognito-region \
+  --type String \
+  --value ap-northeast-2
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/app/cognito-user-pool-id \
+  --type String \
+  --value ''
+
+aws ssm put-parameter --region ap-northeast-2 --overwrite \
+  --name /inframodel/prod/app/cognito-client-id \
+  --type String \
+  --value ''
 
 aws ssm put-parameter --region ap-northeast-2 --overwrite \
   --name /inframodel/prod/app/cors-origins \
