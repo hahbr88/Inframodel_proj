@@ -27,6 +27,14 @@ import { changePassword, deleteAccount, logout } from '../api/auth';
 import { getApiErrorMessage, isUnauthorized } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validateEmail(value: string) {
+  return emailPattern.test(value.trim())
+    ? null
+    : '이메일 형식으로 입력해 주세요.';
+}
+
 export function AppHeader() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -54,7 +62,7 @@ export function AppHeader() {
       password: '',
     },
     validate: {
-      username: (value) => (value.trim() ? null : '아이디를 입력해 주세요.'),
+      username: validateEmail,
       password: (value) =>
         value.length >= 8 ? null : '비밀번호는 8자 이상이어야 합니다.',
     },
@@ -253,8 +261,9 @@ export function AppHeader() {
               탈퇴 후에는 이 계정으로 다시 로그인할 수 없습니다.
             </Text>
             <TextInput
-              label="아이디"
-              autoComplete="username"
+              label="이메일"
+              placeholder="user@example.com"
+              autoComplete="email"
               {...deleteForm.getInputProps('username')}
             />
             <PasswordInput

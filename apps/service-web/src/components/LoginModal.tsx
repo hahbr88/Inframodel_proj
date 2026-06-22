@@ -20,6 +20,14 @@ interface LoginModalProps {
   onSuccess: () => void;
 }
 
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validateEmail(value: string) {
+  return emailPattern.test(value.trim())
+    ? null
+    : '이메일 형식으로 입력해 주세요.';
+}
+
 export function LoginModal({
   opened,
   onClose,
@@ -28,11 +36,11 @@ export function LoginModal({
   const [activeTab, setActiveTab] = useState<string | null>('login');
   const form = useForm({
     initialValues: {
-      username: 'admin',
+      username: '',
       password: '',
     },
     validate: {
-      username: (value) => (value.trim() ? null : '아이디를 입력해 주세요.'),
+      username: validateEmail,
       password: (value) =>
         value.length >= 8 ? null : '비밀번호는 8자 이상이어야 합니다.',
     },
@@ -52,10 +60,11 @@ export function LoginModal({
       password: '',
     },
     validate: {
-      username: (value) =>
-        value.trim().length >= 3 ? null : '아이디는 3자 이상이어야 합니다.',
+      username: validateEmail,
       password: (value) =>
-        value.length >= 8 ? null : '비밀번호는 8자 이상이어야 합니다.',
+        /[A-Z]/.test(value) && value.length >= 8
+          ? null
+          : '비밀번호는 8자 이상이며 대문자를 포함해야 합니다.',
     },
   });
 
@@ -89,9 +98,9 @@ export function LoginModal({
           >
             <Stack>
               <TextInput
-                label="아이디"
-                placeholder="아이디"
-                autoComplete="username"
+                label="이메일"
+                placeholder="user@example.com"
+                autoComplete="email"
                 {...form.getInputProps('username')}
               />
               <PasswordInput
@@ -104,7 +113,7 @@ export function LoginModal({
                 <Alert color="red" variant="light">
                   {getApiErrorMessage(
                     loginMutation.error,
-                    '아이디 또는 비밀번호를 확인해 주세요.',
+                    '이메일 또는 비밀번호를 확인해 주세요.',
                   )}
                 </Alert>
               )}
@@ -129,14 +138,14 @@ export function LoginModal({
           >
             <Stack>
               <TextInput
-                label="아이디"
-                placeholder="아이디"
-                autoComplete="username"
+                label="이메일"
+                placeholder="user@example.com"
+                autoComplete="email"
                 {...signupForm.getInputProps('username')}
               />
               <PasswordInput
                 label="비밀번호"
-                placeholder="비밀번호"
+                placeholder="8자 이상, 대문자 포함"
                 autoComplete="new-password"
                 {...signupForm.getInputProps('password')}
               />
