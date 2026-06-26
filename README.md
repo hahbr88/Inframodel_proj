@@ -2,6 +2,19 @@
 
 이번 팀 프로젝트는 Linux 기반 웹/WAS/DB 서비스를 Docker Compose 구조로 전환하고 AWS 배포 가능성을 검증하는 프로젝트입니다.
 
+---
+
+## 서비스 시연 영상
+
+<p align="center">
+  <a href="https://youtu.be/9eniwysmW2Y" target="_blank" rel="noopener noreferrer">
+    <img src="https://github.com/user-attachments/assets/45c456f6-f943-4d2f-9c65-b32baab8b284" alt="Watch the video" width="600px">
+  </a>
+</p>
+
+
+---
+
 ## Docker Compose 배포 문서
 
 - [구축 가이드](docs/docker-compose-3tier/01-deployment-guide.md)
